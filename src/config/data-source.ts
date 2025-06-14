@@ -6,7 +6,7 @@ export const AppDataSource = new DataSource({
   port: 5432,
   username: "postgres",
   password: "123",
-  database: "instantchat",
+  database: "postgres",
   synchronize: false,
   logging: true,
   entities: [__dirname + "/../entities/*.ts"],
