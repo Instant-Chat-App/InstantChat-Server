@@ -12,23 +12,26 @@ import { Account } from './account.entity';
 
 @Entity('users')
 export class User {
-  @Column({ name: 'user_id' })
+  @PrimaryGeneratedColumn({ name: 'user_id', type: 'int' })
   userId!: number;
 
-  @Column({ name: 'full_name', nullable: true })
-  fullName!: string;
+  @Column({ type: 'varchar', name: 'first_name', nullable: true })
+  firstName?: string;
 
-  @Column({ nullable: true })
-  email!: string;
+  @Column({ type: 'varchar', name: 'last_name', nullable: true })
+  lastName?: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
+  email?: string;
+
+  @Column({ type: 'varchar', nullable: true })
   avatar?: string;
 
   @Column({ type: 'date', nullable: true })
   dob?: Date;
 
   @Column({ type: 'enum', enum: Gender, nullable: true })
-  gender!: Gender;
+  gender?: Gender;
 
   @Column({ type: 'text', nullable: true })
   bio?: string;

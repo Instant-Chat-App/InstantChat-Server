@@ -9,14 +9,14 @@ import { User } from './user.entity';
 
 @Entity('accounts')
 export class Account {
-  @PrimaryGeneratedColumn({ name: 'account_id' })
+  @PrimaryGeneratedColumn({ name: 'account_id', type: 'int' })
   accountId!: number;
 
-  @Column({ unique: true, nullable: true })
-  phone!: string;
+  @Column({ type: 'varchar', unique: true, nullable: true })
+  phone?: string;
 
-  @Column({ nullable: true })
-  password!: string;
+  @Column({ type: 'varchar', nullable: true })
+  password?: string;
 
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive!: boolean;

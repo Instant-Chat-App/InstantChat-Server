@@ -5,20 +5,20 @@ import { MessageStatusEnum } from './enum';
 
 @Entity('message_status')
 export class MessageStatus {
-  @PrimaryColumn({ name: 'message_id' })
+  @PrimaryColumn({ type: 'int', name: 'message_id' })
   messageId!: number;
 
-  @PrimaryColumn({ name: 'member_id' })
+  @PrimaryColumn({ type: 'int', name: 'member_id' })
   memberId!: number;
 
-  @Column({ type: 'enum', enum: MessageStatusEnum })
+  @Column({ type: 'enum', enum: MessageStatusEnum, nullable: false })
   status!: MessageStatusEnum;
 
-  @ManyToOne(() => Message, message => message.messageStatus)
+  @ManyToOne(() => Message, message => message.messageStatus, { nullable: false })
   @JoinColumn({ name: 'message_id' })
-  message?: Message;
+  message!: Message;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'member_id' })
-  member?: User;
+  member!: User;
 }

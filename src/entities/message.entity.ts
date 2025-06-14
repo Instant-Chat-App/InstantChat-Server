@@ -13,28 +13,28 @@ import { Reaction } from './enum';
 
 @Entity('messages')
 export class Message {
-  @PrimaryGeneratedColumn({ name: 'message_id' })
+  @PrimaryGeneratedColumn({ name: 'message_id', type: 'int' })
   messageId!: number;
 
-  @Column({ name: 'chat_id' })
+  @Column({ type: 'int', name: 'chat_id' })
   chatId!: number;
 
-  @Column({ name: 'sender_id' })
+  @Column({ type: 'int', name: 'sender_id' })
   senderId!: number;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', nullable: true })
   content?: string;
 
   @Column({ name: 'created_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt!: Date;
 
-  @Column({ name: 'is_edited' })
-  isEdited?: boolean;
+  @Column({ name: 'is_edited', type: 'boolean', default: false })
+  isEdited!: boolean;
 
-  @Column({ name: 'is_deleted' })
-  isDeleted?: boolean;
+  @Column({ name: 'is_deleted', type: 'boolean', default: false })
+  isDeleted!: boolean;
 
-  @Column({ name: 'reply_to', nullable: true })
+  @Column({ type: 'int', name: 'reply_to', nullable: true })
   replyTo?: number;
 
   @Column({ name: 'is_pin', type: 'boolean', default: false })
