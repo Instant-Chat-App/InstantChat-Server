@@ -43,7 +43,7 @@ CREATE TABLE "accounts" (
 );
 
 CREATE TABLE "users" (
-  "user_id" SERIAL PRIMARY KEY,
+  "user_id" INT PRIMARY KEY,
   "first_name" VARCHAR,
   "last_name" VARCHAR,
   "email" VARCHAR,
