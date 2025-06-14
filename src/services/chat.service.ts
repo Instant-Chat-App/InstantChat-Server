@@ -1,0 +1,13 @@
+import ChatRepository from "../repository/chat.repository";
+
+
+export class ChatService{
+    private chatRepository: ChatRepository;
+    constructor() {
+        this.chatRepository = new ChatRepository();
+    }
+
+    async getUserChats(userId: number) {
+        return await this.chatRepository.getUserChats(userId);
+    }
+}
