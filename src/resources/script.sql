@@ -1,0 +1,184 @@
+CREATE TYPE "chat_type" AS ENUM (
+  'PRIVATE',
+  'GROUP',
+  'CHANNEL'
+);
+
+CREATE TYPE "attach_type" AS ENUM (
+  'FILE',
+  'IMAGE',
+  'VIDEO'
+);
+
+CREATE TYPE "message_status_enum" AS ENUM (
+  'READ',
+  'UNREAD'
+);
+
+CREATE TYPE "gender" AS ENUM (
+  'MALE',
+  'FEMALE'
+);
+
+CREATE TYPE "reaction" AS ENUM (
+  'LIKE',
+  'LOVE',
+  'WOW',
+  'LAUGH',
+  'SAD',
+  'ANGRY'
+);
+
+CREATE TYPE "join_status" AS ENUM (
+  'PENDING',
+  'APPROVED',
+  'REJECTED'
+);
+
+CREATE TABLE "accounts" (
+  "account_id" SERIAL PRIMARY KEY,
+  "phone" VARCHAR UNIQUE,
+  "password" VARCHAR,
+  "is_active" BOOLEAN
+);
+
+CREATE TABLE "users" (
+  "user_id" SERIAL PRIMARY KEY,
+  "first_name" VARCHAR,
+  "last_name" VARCHAR,
+  "email" VARCHAR,
+  "avatar" VARCHAR,
+  "dob" DATE,
+  "gender" gender,
+  "bio" TEXT
+);
+
+CREATE TABLE "contacts" (
+  "user_id" INTEGER,
+  "contact_id" INTEGER,
+  PRIMARY KEY ("user_id", "contact_id")
+);
+
+CREATE TABLE "user_blocked" (
+  "blocker_id" INTEGER,
+  "blocked_id" INTEGER,
+  PRIMARY KEY ("blocker_id", "blocked_id")
+);
+
+CREATE TABLE "chats" (
+  "chat_id" SERIAL PRIMARY KEY,
+  "type" chat_type,
+  "chat_name" VARCHAR,
+  "cover_image" VARCHAR
+);
+
+CREATE TABLE "chat_members" (
+  "chat_id" INTEGER,
+  "member_id" INTEGER,
+  "is_owner" BOOLEAN,
+  "joined_at" DATE,
+  PRIMARY KEY ("chat_id", "member_id")
+);
+
+CREATE TABLE "messages" (
+  "message_id" SERIAL PRIMARY KEY,
+  "chat_id" INTEGER,
+  "sender_id" INTEGER,
+  "content" TEXT,
+  "created_at" TIMESTAMP,
+  "is_edited" BOOLEAN,
+  "is_deleted" BOOLEAN,
+  "reply_to" INTEGER,
+  "is_pin" BOOLEAN
+);
+
+CREATE TABLE "message_status"
+(
+    "message_id" INTEGER,
+    "member_id"  INTEGER,
+    "status"     message_status_enum,
+    PRIMARY KEY ("message_id", "member_id")
+);
+
+
+CREATE TABLE "message_reactions" (
+  "user_id" INTEGER,
+  "message_id" INTEGER,
+  "type" reaction,
+  PRIMARY KEY ("user_id", "message_id")
+);
+
+CREATE TABLE "attachments" (
+  "attachment_id" SERIAL PRIMARY KEY,
+  "message_id" INTEGER,
+  "url" VARCHAR,
+  "type" attach_type
+);
+
+CREATE TABLE "chat_join_requests" (
+  "request_id" SERIAL PRIMARY KEY,
+  "chat_id" INTEGER,
+  "requester_id" INTEGER,
+  "requested_at" TIMESTAMP,
+  "approved_by" INTEGER,
+  "approved_at" TIMESTAMP,
+  "status" join_status
+);
+
+CREATE INDEX "idx_accounts_phone" ON "accounts" ("phone");
+
+CREATE INDEX "idx_users_email" ON "users" ("email");
+
+CREATE INDEX "idx_chat_members_chat_id" ON "chat_members" ("chat_id");
+
+CREATE INDEX "idx_chat_members_member_id" ON "chat_members" ("member_id");
+
+CREATE INDEX "idx_messages_chat_id" ON "messages" ("chat_id");
+
+CREATE INDEX "idx_messages_sender_id" ON "messages" ("sender_id");
+
+CREATE INDEX "idx_messages_created_at" ON "messages" ("created_at");
+
+CREATE INDEX "idx_message_status_message_id" ON "message_status" ("message_id");
+
+CREATE INDEX "idx_message_reactions_message_id" ON "message_reactions" ("message_id");
+
+CREATE INDEX "idx_attachments_message_id" ON "attachments" ("message_id");
+
+CREATE INDEX "idx_chat_join_requests_chat_id" ON "chat_join_requests" ("chat_id");
+
+CREATE INDEX "idx_chat_join_requests_requester_id" ON "chat_join_requests" ("requester_id");
+
+ALTER TABLE "accounts" ADD CONSTRAINT "fk_accounts_users" FOREIGN KEY ("account_id") REFERENCES "users" ("user_id");
+
+ALTER TABLE "contacts" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("user_id");
+
+ALTER TABLE "contacts" ADD FOREIGN KEY ("contact_id") REFERENCES "users" ("user_id");
+
+ALTER TABLE "user_blocked" ADD FOREIGN KEY ("blocker_id") REFERENCES "users" ("user_id");
+
+ALTER TABLE "user_blocked" ADD FOREIGN KEY ("blocked_id") REFERENCES "users" ("user_id");
+
+ALTER TABLE "chat_members" ADD FOREIGN KEY ("chat_id") REFERENCES "chats" ("chat_id");
+
+ALTER TABLE "chat_members" ADD FOREIGN KEY ("member_id") REFERENCES "users" ("user_id");
+
+ALTER TABLE "messages" ADD FOREIGN KEY ("chat_id") REFERENCES "chats" ("chat_id");
+
+ALTER TABLE "messages" ADD FOREIGN KEY ("sender_id") REFERENCES "users" ("user_id");
+
+ALTER TABLE "message_status" ADD FOREIGN KEY ("message_id") REFERENCES "messages" ("message_id");
+
+ALTER TABLE "message_status" ADD FOREIGN KEY ("member_id") REFERENCES "users" ("user_id");
+
+ALTER TABLE "message_reactions" ADD FOREIGN KEY ("message_id") REFERENCES "messages" ("message_id");
+
+ALTER TABLE "message_reactions" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("user_id");
+
+ALTER TABLE "attachments" ADD FOREIGN KEY ("message_id") REFERENCES "messages" ("message_id");
+
+ALTER TABLE "chat_join_requests" ADD FOREIGN KEY ("chat_id") REFERENCES "chats" ("chat_id");
+
+ALTER TABLE "chat_join_requests" ADD FOREIGN KEY ("requester_id") REFERENCES "users" ("user_id");
+
+ALTER TABLE "chat_join_requests" ADD FOREIGN KEY ("approved_by") REFERENCES "users" ("user_id");
