@@ -149,7 +149,7 @@ CREATE INDEX "idx_chat_join_requests_chat_id" ON "chat_join_requests" ("chat_id"
 
 CREATE INDEX "idx_chat_join_requests_requester_id" ON "chat_join_requests" ("requester_id");
 
-ALTER TABLE "accounts" ADD CONSTRAINT "fk_accounts_users" FOREIGN KEY ("account_id") REFERENCES "users" ("user_id");
+ALTER TABLE "users" ADD CONSTRAINT "fk_users_accounts" FOREIGN KEY  ("user_id") REFERENCES  "accounts" ("account_id");
 
 ALTER TABLE "contacts" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("user_id");
 
