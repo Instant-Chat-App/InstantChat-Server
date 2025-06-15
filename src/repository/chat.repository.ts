@@ -58,18 +58,49 @@ export default class ChatRepository extends BaseRepository<Chat> {
         return results;
     }
 
+    async findExistingPrivateChat(userId: number, otherUserId: number): Promise<Chat | null> {
+        return await this.manager
+            .createQueryBuilder(Chat, 'chat')
+            .innerJoin(ChatMember, 'chatMember', 'chatMember.chat_id = chat.chat_id')
+            .where('chat.type = :type', { type: 'private' })
+            .andWhere('chatMember.member_id IN (:...memberIds)', { memberIds: [userId, otherUserId] })
+            .getOne();
+    }
+
+    async getChatById(chatId: number): Promise<Chat | null> {
+        return await this.manager
+            .createQueryBuilder(Chat, 'chat')
+            .where('chat.chat_id = :chatId', { chatId })
+            .getOne();
+    }
+
+    async createChat(chatData: Partial<Chat>): Promise<Chat> {
+        const chat = this.manager.create(Chat, chatData);
+        return await this.manager.save(chat);
+    }
+
+    async createChatMember(memberData: Partial<ChatMember>): Promise<ChatMember> {
+        const chatMember = this.manager.create(ChatMember, memberData);
+        return await this.manager.save(ChatMember, chatMember);
+    }
+
+    async createChatMembers(membersData: Partial<ChatMember>[]): Promise<ChatMember[]> {
+        const chatMembers = membersData.map(data => this.manager.create(ChatMember, data));
+        return await this.manager.save(ChatMember, chatMembers);
+    }
+
     async getCurrentMember(
         userId: number,
         chatId: number
-    ) {
-        const queryBuilder = this.manager
+    ): Promise<ChatMember | null> {
+        return await this.manager
             .createQueryBuilder(ChatMember, 'chatMember')
             .where('chatMember.member_id = :userId', { userId })
-            .andWhere('chatMember.chat_id = :chatId', { chatId });
-
-        return await queryBuilder.getOne();
+            .andWhere('chatMember.chat_id = :chatId', { chatId })
+            .getOne();
     }
 
+    // Create 1-1 private chat between two users
     async createPrivateChat(
         userId: number,
         otherUserId: number
@@ -116,6 +147,7 @@ export default class ChatRepository extends BaseRepository<Chat> {
         return savedChat;
     }
 
+    // Create group chat with multiple members
     async createGroupChat(
         userId: number,
         request: CreateGroupRequest
@@ -147,6 +179,7 @@ export default class ChatRepository extends BaseRepository<Chat> {
         return savedChat;
     }
 
+    // Create channel with multiple members but only owner can message
     async createChatChannel(
         userId: number,
         request: CreateGroupRequest
