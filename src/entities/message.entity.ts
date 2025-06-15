@@ -39,9 +39,6 @@ export class Message {
   @Column({ type: 'int', name: 'reply_to', nullable: true })
   replyTo?: number;
 
-  @Column({ name: 'is_pin', type: 'boolean', default: false })
-  isPin!: boolean;
-
   @ManyToOne(() => Chat, chat => chat.messages)
   @JoinColumn({ name: 'chat_id' })
   chat!: Chat;
