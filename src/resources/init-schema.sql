@@ -44,8 +44,7 @@ CREATE TABLE "accounts" (
 
 CREATE TABLE "users" (
   "user_id" INT PRIMARY KEY,
-  "first_name" VARCHAR,
-  "last_name" VARCHAR,
+  "full_name" VARCHAR,
   "email" VARCHAR,
   "avatar" VARCHAR,
   "dob" DATE,
@@ -182,3 +181,5 @@ ALTER TABLE "chat_join_requests" ADD FOREIGN KEY ("chat_id") REFERENCES "chats" 
 ALTER TABLE "chat_join_requests" ADD FOREIGN KEY ("requester_id") REFERENCES "users" ("user_id");
 
 ALTER TABLE "chat_join_requests" ADD FOREIGN KEY ("approved_by") REFERENCES "users" ("user_id");
+
+ALTER TABLE "messages" ADD CONSTRAINT fk_messages_replyto FOREIGN KEY ("reply_to") REFERENCES "messages"("message_id");
