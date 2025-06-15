@@ -15,11 +15,8 @@ export class User {
   @PrimaryGeneratedColumn({ name: 'user_id', type: 'int' })
   userId!: number;
 
-  @Column({ type: 'varchar', name: 'first_name', nullable: true })
-  firstName?: string;
-
-  @Column({ type: 'varchar', name: 'last_name', nullable: true })
-  lastName?: string;
+  @Column({ type: 'varchar', name: 'full_name', nullable: true })
+  fullName?: string;
 
   @Column({ type: 'varchar', nullable: true })
   email?: string;
