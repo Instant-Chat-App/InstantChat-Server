@@ -1,6 +1,9 @@
 import { Server as HttpServer, IncomingMessage, ServerResponse } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { logger } from "../utils/logger";
+import { createClient } from "redis";
+import { getEnv } from "../utils/get-env.service";
+import { createAdapter } from "@socket.io/redis-adapter";
 
 let socketIO: SocketIOServer | null = null;
 export default function setupSocket(
@@ -21,16 +24,40 @@ export default function setupSocket(
         }
     });
 
-
-    io.on("connection", (socket) => {
-        socket.on("join_chat", (chatId) => {
-            socket.join(`chat:${chatId}`);
-        });
-
-        socket.on("send_message", (msg) => {
-            io.to(`chat:${msg.chatId}`).emit("new_message", msg);
-        });
+    const pubClient = createClient({
+        url: `redis://${getEnv("REDIS_HOST", "localhost")}:${getEnv("REDIS_PORT", "6379")}`
     });
+
+    const subClient = pubClient.duplicate();
+
+    Promise.all([pubClient.connect(), subClient.connect()])
+        .then(() => {
+            io.adapter(createAdapter(pubClient, subClient));
+            logger.info("Redis connected successfully for Socket.IO");
+
+            io.on("connection", (socket) => {
+                logger.info(`New client connected: ${socket.id}`);
+
+                socket.on("disconnect", () => {
+                    logger.info(`Client disconnected: ${socket.id}`);
+                });
+
+                socket.on("error", (error) => {
+                    logger.error(`Socket error: ${error}`);
+                });
+
+                //WORK IN PROGRESS
+            });
+        })
+        .catch((error) => {
+            logger.error("Failed to connect to Redis:", error);
+        });
+
+
+
+
+
+
     logger.info("Socket.IO initialized successfully");
 
     return io;
