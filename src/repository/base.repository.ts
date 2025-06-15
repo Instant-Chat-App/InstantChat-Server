@@ -1,4 +1,3 @@
-
 import { AppDataSource } from "../config/data-source";
 import { EntityTarget, ObjectLiteral, Repository } from "typeorm";
 

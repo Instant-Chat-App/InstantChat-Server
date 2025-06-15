@@ -1,11 +1,7 @@
-import { getRepository } from "typeorm";
 import { Chat } from "../entities/chat.entity";
 import { BaseRepository } from "./base.repository";
 import { Message } from "../entities/message.entity";
 import { ChatMember } from "../entities/chat-member.entity";
-import { logger } from "../utils/logger";
-
-
 
 export default class ChatRepository extends BaseRepository<Chat> {
     constructor() {
