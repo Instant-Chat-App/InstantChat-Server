@@ -9,8 +9,6 @@ import { getEnv } from './utils/get-env.service';
 import routerConfig from './config/router.config';
 
 
-dotenv.config();
-
 initializeApplication();
 
 async function initializeApplication(){

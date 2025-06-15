@@ -4,8 +4,8 @@ import { ChatService } from "../services/chat.service";
 export default class ChatController {
     private chatService: ChatService;
 
-    constructor(chatService: ChatService) {
-        this.chatService = chatService;
+    constructor() {
+        this.chatService = new ChatService();
     }
 
     async getUserChats(req: any, res: any) {
