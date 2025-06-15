@@ -21,4 +21,4 @@ export class MessageReaction {
     @ManyToOne(() => User)
     @JoinColumn({ name: 'user_id' })
     user!: User;
-} 
+}
