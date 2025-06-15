@@ -10,4 +10,8 @@ export class ChatService{
     async getUserChats(userId: number) {
         return await this.chatRepository.getUserChats(userId);
     }
+
+    async getCurrentMember(userId: number, chatId: number) {
+        return await this.chatRepository.getCurrentMember(userId, chatId);
+    }
 }

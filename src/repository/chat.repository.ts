@@ -4,6 +4,7 @@ import { BaseRepository } from "./base.repository";
 import { Message } from "../entities/message.entity";
 import { ChatMember } from "../entities/chat-member.entity";
 import { logger } from "../utils/logger";
+import { MessageStatus } from "../entities/message-status.entity";
 
 
 
@@ -32,16 +33,21 @@ export default class ChatRepository extends BaseRepository<Chat> {
                 'message',
                 `message.chatId = chat.chatId AND message.createdAt = (${subQuery.getQuery()})`
             )
-            .addSelect([
-                `chat.chat_id`,
-                `chat.chat_name`,
-                `chat.type`,
-                `chat.cover_image`,
-                `message.message_id`,
-                `message.content`,
-                `message.created_at`,
-                `message.sender_id`,
-            ])
+            .leftJoin(
+                MessageStatus,
+                'messageStatus',
+                'messageStatus.messageId = message.messageId AND messageStatus.memberId = :userId', { userId }
+            )
+            .select([])
+            .addSelect('chat.chat_id', 'chatId')
+            .addSelect('chat.chat_name', 'chatName')
+            .addSelect('chat.type', 'chatType')
+            .addSelect('chat.cover_image', 'coverImage')
+            .addSelect('message.message_id', 'messageId')
+            .addSelect('message.content', 'messageContent')
+            .addSelect('message.created_at', 'messageCreatedAt')
+            .addSelect('message.sender_id', 'messageSenderId')
+            .addSelect('messageStatus.status', 'readStatus')
             .orderBy('message.createdAt', 'DESC');
 
         const results = await queryBuilder.getRawMany();
@@ -49,5 +55,17 @@ export default class ChatRepository extends BaseRepository<Chat> {
             return [];
         }
         return results;
+    }
+
+    async getCurrentMember(
+        userId: number,
+        chatId: number
+    ) {
+        const queryBuilder = this.manager
+            .createQueryBuilder(ChatMember, 'chatMember')
+            .where('chatMember.member_id = :userId', { userId })
+            .andWhere('chatMember.chat_id = :chatId', { chatId });
+
+        return await queryBuilder.getOne();
     }
 }
