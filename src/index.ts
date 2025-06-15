@@ -7,6 +7,8 @@ import { create } from 'domain';
 import { createServer } from 'http';
 import { getEnv } from './utils/get-env.service';
 import routerConfig from './config/router.config';
+import getSocketIO from './socketio/socket-io';
+import { logger } from './utils/logger';
 
 
 initializeApplication();
@@ -21,8 +23,9 @@ async function initializeApplication(){
 
   app.use("/api", routerConfig);
 
+  getSocketIO(server);  
   server.listen(port, () => {
-    console.log(`Server is running at http://localhost:${port}`);
+    logger.info(`Server is running at http://localhost:${port}`);
   });
 }
 
