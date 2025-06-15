@@ -4,12 +4,12 @@ import { AppDataSource } from "../config/data-source";
 import { Account } from "../entities/account.entity";
 import { getEnv } from "../utils/get-env.service";
 import { User } from "../entities/user.entity";
-import { TokenPair, TokenPayload } from "../dto/token.dto";
+import { TokenPair, TokenPayload } from "../dtos/token.dto";
 import { redisService } from "./redis.service";
-import { LoginRequest } from "../dto/login-request.dto";
-import { AuthResponse } from "../dto/auth-response.dto";
+import { LoginRequest } from "../dtos/login-request.dto";
+import { AuthResponse } from "../dtos/auth-response.dto";
 import { logger } from "../utils/logger";
-import { RegisterRequest } from "../dto/register-request.dto";
+import { RegisterRequest } from "../dtos/register-request.dto";
 
 export class AuthService {
   private readonly accountRepository = AppDataSource.getRepository(Account);
@@ -164,6 +164,15 @@ export class AuthService {
     } catch (error) {
       logger.error(`Error during logout: ${error}`);
       return false;
+    }
+  }
+
+  verifyAccessToken(token: string): TokenPayload | null {
+    try {
+      return jwt.verify(token, this.ACCESS_TOKEN_SECRET) as TokenPayload;
+    } catch (error) {
+      logger.error(`Error verifying access token: ${error}`);
+      return null;
     }
   }
 }
