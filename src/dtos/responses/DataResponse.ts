@@ -25,8 +25,8 @@ export class DataResponse<T> {
         return new DataResponse<T>(true, HttpStatusCode.OK, data, message);
     }
 
-    static error<T>(code: HttpStatusCode, message: string, errors: string): DataResponse<T> {
-        return new DataResponse<T>(false, code, undefined, message, errors);
+    static error<T>(message: string, errors: string): DataResponse<T> {
+        return new DataResponse<T>(false, HttpStatusCode.INTERNAL_SERVER_ERROR, undefined, message, errors);
     }
 
     static notFound<T>(message: string = 'Not Found'): DataResponse<T> {
