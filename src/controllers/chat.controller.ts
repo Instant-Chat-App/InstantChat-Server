@@ -1,7 +1,8 @@
 import { DataResponse } from "../dtos/responses/DataResponse";
 import { ChatService } from "../services/chat.service";
 import { logger } from "../utils/logger";
-
+import { Request, Response } from "express";
+import CreateGroupRequest from "../dtos/requests/CreateGroupRequest";
 
 export default class ChatController {
     private chatService: ChatService;
@@ -10,77 +11,294 @@ export default class ChatController {
         this.chatService = new ChatService();
     }
 
-    async getUserChats(req: any, res: any) {
+    private validateId(id: any, paramName: string): number | null {
+        const parsedId = parseInt(id);
+        if (isNaN(parsedId)) {
+            return null;
+        }
+        return parsedId;
+    }
+
+    public async getUserChats(req: Request, res: Response) {
         try {
-            const userId = Number(req.params.userId);
+            const userId = this.validateId(req.params.userId, 'userId');
+            if (userId === null) {
+                return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
+            }
             const chats = await this.chatService.getUserChats(userId);
-            res.status(200).json(DataResponse.success(chats, "User chats fetched successfully"));
-        } catch (error:any) {
-            logger.error("Error fetching user chats:", error);
-            res.status(500).json(DataResponse.error("Internal server error", error.message));
+            res.json(DataResponse.success(chats, "Chats retrieved successfully"));
+        } catch (error: any) {
+            res.status(500).json(DataResponse.error("Failed to get user chats", error.message));
         }
     }
 
-    async getChatById(req: any, res: any) {
+    public async getCurrentMember(req: Request, res: Response) {
         try {
-            const chatId = Number(req.params.chatId);
+            const userId = this.validateId(req.params.userId, 'userId');
+            const chatId = this.validateId(req.params.chatId, 'chatId');
+
+            if (userId === null) {
+                return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
+            }
+            if (chatId === null) {
+                return res.status(400).json(DataResponse.error("Invalid chatId", "chatId must be a valid number"));
+            }
+
+            const member = await this.chatService.getCurrentMember(userId, chatId);
+            if (!member) {
+                return res.status(404).json(DataResponse.notFound("Member not found"));
+            }
+            res.json(DataResponse.success(member, "Member retrieved successfully"));
+        } catch (error: any) {
+            res.status(500).json(DataResponse.error("Failed to get current member", error.message));
+        }
+    }
+
+    public async getChatById(req: Request, res: Response) {
+        try {
+            const chatId = this.validateId(req.params.chatId, 'chatId');
+            if (chatId === null) {
+                return res.status(400).json(DataResponse.error("Invalid chatId", "chatId must be a valid number"));
+            }
+
             const chat = await this.chatService.getChatById(chatId);
             if (!chat) {
                 return res.status(404).json(DataResponse.notFound("Chat not found"));
             }
-            res.status(200).json(DataResponse.success(chat, "Chat fetched successfully"));
-        } catch (error:any) {
-            logger.error("Error fetching chat by ID:", error);
-            res.status(500).json(DataResponse.error("Internal server error", error.message));
+            res.json(DataResponse.success(chat, "Chat retrieved successfully"));
+        } catch (error: any) {
+            res.status(500).json(DataResponse.error("Failed to get chat", error.message));
         }
     }
 
-    async getCurrentMember(req: any, res: any) {
+    public async createPrivateChat(req: Request, res: Response) {
         try {
-            const userId = Number(req.params.userId);
-            const chatId = Number(req.params.chatId);
-            const member = await this.chatService.getCurrentMember(userId, chatId);
-            res.status(200).json(DataResponse.success(member, "Current member fetched successfully"));
-        } catch (error:any) {
-            logger.error("Error fetching current member:", error);
-            res.status(500).json(DataResponse.error("Internal server error", error.message));
-        }
-    }
+            const userId = this.validateId(req.body.userId, 'userId');
+            const otherUserId = this.validateId(req.body.otherUserId, 'otherUserId');
+            if (userId === null) {
+                return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
+            }
+            if (otherUserId === null) {
+                return res.status(400).json(DataResponse.error("Invalid otherUserId", "otherUserId must be a valid number"));
+            }
 
-    async createPrivateChat(req: any, res: any) {
-        try {
-            const userId = Number(req.params.userId);
-            const otherUserId = Number(req.params.otherUserId);
             const chat = await this.chatService.createPrivateChat(userId, otherUserId);
-            res.status(201).json(DataResponse.success(chat, "Private chat created successfully"));
-        } catch (error:any) {
-            logger.error("Error creating private chat:", error);
-            res.status(500).json(DataResponse.error("Internal server error", error.message));
+            res.json(DataResponse.success(chat, "Private chat created successfully"));
+        } catch (error: any) {
+            res.status(500).json(DataResponse.error("Failed to create private chat", error.message));
         }
     }
 
-    async createGroupChat(req: any, res: any) {
+    public async createGroupChat(req: Request, res: Response) {
         try {
-            const userId = Number(req.params.userId);
-            const groupRequest = req.body;
+            const userId = this.validateId(req.body.userId, 'userId');
+            if (userId === null) {
+                return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
+            }
+
+            if (!Array.isArray(req.body.members)) {
+                return res.status(400).json(DataResponse.error("Invalid members", "members must be an array of user IDs"));
+            }
+
+            const members = req.body.members.map((id: string | number) => parseInt(id.toString()));
+            if (members.some((id: number) => isNaN(id))) {
+                return res.status(400).json(DataResponse.error("Invalid members", "all member IDs must be valid numbers"));
+            }
+
+            const groupRequest: CreateGroupRequest = {
+                name: req.body.name,
+                members: members
+            };
+
             const chat = await this.chatService.createGroupChat(userId, groupRequest);
-            res.status(201).json(DataResponse.success(chat, "Group chat created successfully"));
-        } catch (error:any) {
-            logger.error("Error creating group chat:", error);
-            res.status(500).json(DataResponse.error("Internal server error", error.message));
+            res.json(DataResponse.success(chat, "Group chat created successfully"));
+        } catch (error: any) {
+            res.status(500).json(DataResponse.error("Failed to create group chat", error.message));
         }
     }
 
-    async createChannel(req: any, res: any) {
+    public async createChannel(req: Request, res: Response) {
         try {
-            const userId = Number(req.params.userId);
-            const channelRequest = req.body;
+            const userId = this.validateId(req.body.userId, 'userId');
+            if (userId === null) {
+                return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
+            }
+
+            if (!Array.isArray(req.body.members)) {
+                return res.status(400).json(DataResponse.error("Invalid members", "members must be an array of user IDs"));
+            }
+
+            const members = req.body.members.map((id: string | number) => parseInt(id.toString()));
+            if (members.some((id: number) => isNaN(id))) {
+                return res.status(400).json(DataResponse.error("Invalid members", "all member IDs must be valid numbers"));
+            }
+
+            const channelRequest: CreateGroupRequest = {
+                name: req.body.name,
+                members: members
+            };
+
             const chat = await this.chatService.createChannel(userId, channelRequest);
-            res.status(201).json(DataResponse.success(chat, "Channel created successfully"));
-        } catch (error:any) {
-            logger.error("Error creating channel:", error);
-            res.status(500).json(DataResponse.error("Internal server error", error.message));
+            res.json(DataResponse.success(chat, "Channel created successfully"));
+        } catch (error: any) {
+            res.status(500).json(DataResponse.error("Failed to create channel", error.message));
         }
     }
-    
+
+    public async addUserToChat(req: Request, res: Response) {
+        try {
+            const ownerId = this.validateId(req.body.ownerId, 'ownerId');
+            const chatId = this.validateId(req.params.chatId, 'chatId');
+            const userId = this.validateId(req.body.userId, 'userId');
+
+            if (ownerId === null) {
+                return res.status(400).json(DataResponse.error("Invalid ownerId", "ownerId must be a valid number"));
+            }
+            if (chatId === null) {
+                return res.status(400).json(DataResponse.error("Invalid chatId", "chatId must be a valid number"));
+            }
+            if (userId === null) {
+                return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
+            }
+
+            await this.chatService.addUserToChat(ownerId, chatId, userId);
+            res.json(DataResponse.success(null, "User added to chat successfully"));
+        } catch (error: any) {
+            res.status(500).json(DataResponse.error("Failed to add user to chat", error.message));
+        }
+    }
+
+    public async kickUserFromChat(req: Request, res: Response) {
+        try {
+            const ownerId = this.validateId(req.body.ownerId, 'ownerId');
+            const chatId = this.validateId(req.params.chatId, 'chatId');
+            const userId = this.validateId(req.params.userId, 'userId');
+
+            if (ownerId === null) {
+                return res.status(400).json(DataResponse.error("Invalid ownerId", "ownerId must be a valid number"));
+            }
+            if (chatId === null) {
+                return res.status(400).json(DataResponse.error("Invalid chatId", "chatId must be a valid number"));
+            }
+            if (userId === null) {
+                return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
+            }
+
+            await this.chatService.kickUserFromChat(ownerId, chatId, userId);
+            res.json(DataResponse.success(null, "User kicked from chat successfully"));
+        } catch (error: any) {
+            res.status(500).json(DataResponse.error("Failed to kick user from chat", error.message));
+        }
+    }
+
+    public async leaveChat(req: Request, res: Response) {
+        try {
+            const userId = this.validateId(req.body.userId, 'userId');
+            const chatId = this.validateId(req.params.chatId, 'chatId');
+
+            if (userId === null) {
+                return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
+            }
+            if (chatId === null) {
+                return res.status(400).json(DataResponse.error("Invalid chatId", "chatId must be a valid number"));
+            }
+
+            await this.chatService.leaveChat(userId, chatId);
+            res.json(DataResponse.success(null, "Left chat successfully"));
+        } catch (error: any) {
+            res.status(500).json(DataResponse.error("Failed to leave chat", error.message));
+        }
+    }
+
+    public async deleteChat(req: Request, res: Response) {
+        try {
+            const ownerId = this.validateId(req.body.ownerId, 'ownerId');
+            const chatId = this.validateId(req.params.chatId, 'chatId');
+
+            if (ownerId === null) {
+                return res.status(400).json(DataResponse.error("Invalid ownerId", "ownerId must be a valid number"));
+            }
+            if (chatId === null) {
+                return res.status(400).json(DataResponse.error("Invalid chatId", "chatId must be a valid number"));
+            }
+
+            await this.chatService.deleteChat(ownerId, chatId);
+            res.json(DataResponse.success(null, "Chat deleted successfully"));
+        } catch (error: any) {
+            res.status(500).json(DataResponse.error("Failed to delete chat", error.message));
+        }
+    }
+
+    public async changeChatName(req: Request, res: Response) {
+        try {
+            const userId = this.validateId(req.body.userId, 'userId');
+            const chatId = this.validateId(req.params.chatId, 'chatId');
+
+            if (userId === null) {
+                return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
+            }
+            if (chatId === null) {
+                return res.status(400).json(DataResponse.error("Invalid chatId", "chatId must be a valid number"));
+            }
+            if (!req.body.name || typeof req.body.name !== 'string') {
+                return res.status(400).json(DataResponse.error("Invalid name", "name must be a non-empty string"));
+            }
+
+            const chat = await this.chatService.changeChatName(userId, chatId, req.body.name);
+            res.json(DataResponse.success(chat, "Chat name changed successfully"));
+        } catch (error: any) {
+            res.status(500).json(DataResponse.error("Failed to change chat name", error.message));
+        }
+    }
+
+    public async changeChatCoverImage(req: Request, res: Response) {
+        try {
+            const userId = this.validateId(req.body.userId, 'userId');
+            const chatId = this.validateId(req.params.chatId, 'chatId');
+
+            if (userId === null) {
+                return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
+            }
+            if (chatId === null) {
+                return res.status(400).json(DataResponse.error("Invalid chatId", "chatId must be a valid number"));
+            }
+            if (!req.body.coverImage || typeof req.body.coverImage !== 'string') {
+                return res.status(400).json(DataResponse.error("Invalid coverImage", "coverImage must be a non-empty string"));
+            }
+
+            const chat = await this.chatService.changeChatCoverImage(userId, chatId, req.body.coverImage);
+            res.json(DataResponse.success(chat, "Chat cover image changed successfully"));
+        } catch (error: any) {
+            res.status(500).json(DataResponse.error("Failed to change chat cover image", error.message));
+        }
+    }
+
+    public async getChatMembers(req: Request, res: Response) {
+        try {
+            const chatId = this.validateId(req.params.chatId, 'chatId');
+            if (chatId === null) {
+                return res.status(400).json(DataResponse.error("Invalid chatId", "chatId must be a valid number"));
+            }
+
+            const members = await this.chatService.getChatMembers(chatId);
+            res.json(DataResponse.success(members, "Chat members retrieved successfully"));
+        } catch (error: any) {
+            res.status(500).json(DataResponse.error("Failed to get chat members", error.message));
+        }
+    }
+
+    public async findChats(req: Request, res: Response) {
+        try {
+            const userId = this.validateId(req.params.userId, 'userId');
+            if (userId === null) {
+                return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
+            }
+
+            const searchTerm = req.query.searchTerm as string || "";
+            const result = await this.chatService.findChats(userId, searchTerm);
+            res.json(DataResponse.success(result, "Chats found successfully"));
+        } catch (error: any) {
+            res.status(500).json(DataResponse.error("Failed to find chats", error.message));
+        }
+    }
 }
