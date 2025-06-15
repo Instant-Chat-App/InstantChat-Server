@@ -9,7 +9,7 @@ chatRouter.get("/:userId", (req, res) => {
     chatController.getUserChats(req, res);
 });
 
-chatRouter.get("/:userId/:chatId", (req, res) => {
+chatRouter.get("/:chatId/:userId", (req, res) => {
     chatController.getCurrentMember(req, res);
 });
 export default chatRouter;

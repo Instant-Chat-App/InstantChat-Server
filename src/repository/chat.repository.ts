@@ -5,7 +5,8 @@ import { Message } from "../entities/message.entity";
 import { ChatMember } from "../entities/chat-member.entity";
 import { logger } from "../utils/logger";
 import { MessageStatus } from "../entities/message-status.entity";
-
+import { ChatType } from "../entities/enum";
+import CreateGroupRequest from "../dtos/requests/CreateGroupRequest";
 
 
 export default class ChatRepository extends BaseRepository<Chat> {
@@ -68,4 +69,114 @@ export default class ChatRepository extends BaseRepository<Chat> {
 
         return await queryBuilder.getOne();
     }
+
+    async createPrivateChat(
+        userId: number,
+        otherUserId: number
+    ): Promise<Chat | null> {
+       
+        const existingChat = await this.manager
+            .createQueryBuilder(Chat, 'chat')
+            .innerJoin(ChatMember, 'chatMember', 'chatMember.chat_id = chat.chat_id')
+            .where('chat.type = :type', { type: 'private' })
+            .andWhere('chatMember.member_id IN (:...memberIds)', { memberIds: [userId, otherUserId] })
+            .getOne();
+
+        logger.info(`Searching for existing private chat between ${userId} and ${otherUserId}`);
+
+
+        if (existingChat) {
+            logger.info(`Found existing private chat between ${userId} and ${otherUserId}`);
+            return existingChat;
+        }
+
+        const chat = new Chat();
+        chat.type = ChatType.PRIVATE;
+        chat.chatName = undefined;
+        chat.coverImage = undefined;
+
+        const savedChat = await this.manager.save(chat);
+
+        const chatMembers = [
+            this.manager.create(ChatMember, { 
+                chatId: savedChat.chatId,
+                memberId: userId,
+                isOwner: false,
+                joinedAt: new Date()
+            }),
+            this.manager.create(ChatMember, { 
+                chatId: savedChat.chatId,
+                memberId: otherUserId,
+                isOwner: false,
+                joinedAt: new Date()
+            })
+        ];
+
+        await this.manager.save(ChatMember, chatMembers);
+        return savedChat;
+    }
+
+    async createGroupChat(
+        userId: number,
+        request: CreateGroupRequest
+    ): Promise<Chat> {
+        const chat = new Chat();
+        chat.type = ChatType.GROUP;
+        chat.chatName = request.name;
+
+        const savedChat = await this.manager.save(chat);
+
+        logger.info(`Creating group chat with ID ${savedChat.chatId} and name ${request.name}`);
+        const ownerMember = this.manager.create(ChatMember, {
+            chatId: savedChat.chatId,
+            memberId: userId,
+            isOwner: true,
+            joinedAt: new Date()
+        });
+        await this.manager.save(ownerMember);
+        for (const memberId of request.members) {
+            const chatMember = this.manager.create(ChatMember, {
+                chatId: savedChat.chatId,
+                memberId: memberId,
+                isOwner: false,
+                joinedAt: new Date()
+            });
+
+            await this.manager.save(chatMember);
+        }
+        return savedChat;
+    }
+
+    async createChatChannel(
+        userId: number,
+        request: CreateGroupRequest
+    ): Promise<Chat> {
+        const chat = new Chat();
+        chat.type = ChatType.CHANNEL;
+        chat.chatName = request.name;
+
+        const savedChat = await this.manager.save(chat);
+
+        logger.info(`Creating channel with ID ${savedChat.chatId} and name ${request.name}`);
+        const ownerMember = this.manager.create(ChatMember, {
+            chatId: savedChat.chatId,
+            memberId: userId,
+            isOwner: true,
+            joinedAt: new Date()
+        });
+        await this.manager.save(ownerMember);
+        for (const memberId of request.members) {
+            const chatMember = this.manager.create(ChatMember, {
+                chatId: savedChat.chatId,
+                memberId: memberId,
+                isOwner: false,
+                joinedAt: new Date()
+            });
+
+            await this.manager.save(chatMember);
+        }
+        return savedChat;
+    }
+
+
 }

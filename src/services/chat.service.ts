@@ -1,3 +1,4 @@
+import { Chat } from "../entities/chat.entity";
 import ChatRepository from "../repository/chat.repository";
 
 
@@ -13,5 +14,12 @@ export class ChatService{
 
     async getCurrentMember(userId: number, chatId: number) {
         return await this.chatRepository.getCurrentMember(userId, chatId);
+    }
+
+    async createPrivateChat(userId: number, memberId: number) {
+        
+
+
+
     }
 }
