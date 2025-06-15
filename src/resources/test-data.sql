@@ -5,10 +5,10 @@ INSERT INTO accounts (account_id, phone, password, is_active) VALUES
 (3, '+1122334455', 'hashed_pass_3', false);
 
 -- Insert data into users
-INSERT INTO users (user_id, first_name, last_name, email, avatar, dob, gender, bio) VALUES
-(1, 'Alice', 'Smith', 'alice@example.com', 'alice.jpg', '1990-05-15', 'FEMALE', 'Loves hiking and coding'),
-(2, 'Bob', 'Johnson', 'bob@example.com', 'bob.jpg', '1985-08-22', 'MALE', 'Tech enthusiast'),
-(3, 'Carol', 'Brown', 'carol@example.com', 'carol.jpg', '1995-03-10', 'FEMALE', 'Aspiring artist');
+INSERT INTO users (user_id, full_name, email, avatar, dob, gender, bio) VALUES
+(1, 'Alice Smith', 'alice@example.com', 'alice.jpg', '1990-05-15', 'FEMALE', 'Loves hiking and coding'),
+(2, 'Bob Johnson', 'bob@example.com', 'bob.jpg', '1985-08-22', 'MALE', 'Tech enthusiast'),
+(3, 'Carol Brown', 'carol@example.com', 'carol.jpg', '1995-03-10', 'FEMALE', 'Aspiring artist');
 
 -- Insert data into contacts
 INSERT INTO contacts (user_id, contact_id) VALUES
@@ -36,11 +36,11 @@ INSERT INTO chat_members (chat_id, member_id, is_owner, joined_at) VALUES
 (3, 2, true, '2025-03-01');
 
 -- Insert data into messages
-INSERT INTO messages (message_id, chat_id, sender_id, content, created_at, is_edited, is_deleted, reply_to, is_pin) VALUES
-(1, 1, 1, 'Hey Bob, how''s it going?', '2025-06-01 10:00:00', false, false, NULL, false),
-(2, 1, 2, 'All good, Alice! You?', '2025-06-01 10:05:00', false, false, 1, false),
-(3, 2, 3, 'Group party this weekend?', '2025-06-02 12:00:00', true, false, NULL, true),
-(4, 3, 2, 'New tech article posted!', '2025-06-03 15:00:00', false, false, NULL, false);
+INSERT INTO messages (message_id, chat_id, sender_id, content, created_at, is_edited, is_deleted, reply_to) VALUES
+(1, 1, 1, 'Hey Bob, how''s it going?', '2025-06-01 10:00:00', false, false, NULL),
+(2, 1, 2, 'All good, Alice! You?', '2025-06-01 10:05:00', false, false, 1),
+(3, 2, 3, 'Group party this weekend?', '2025-06-02 12:00:00', true, false, NULL),
+(4, 3, 2, 'New tech article posted!', '2025-06-03 15:00:00', false, false, NULL);
 
 -- Insert data into message_status
 INSERT INTO message_status (message_id, member_id, status) VALUES
@@ -60,9 +60,3 @@ INSERT INTO attachments (attachment_id, message_id, url, type) VALUES
 (1, 3, 'party_invite.pdf', 'FILE'),
 (2, 4, 'tech_article.jpg', 'IMAGE'),
 (3, 4, 'tech_video.mp4', 'VIDEO');
-
--- Insert data into chat_join_requests
-INSERT INTO chat_join_requests (request_id, chat_id, requester_id, requested_at, approved_by, approved_at, status) VALUES
-(1, 2, 3, '2025-02-01 09:00:00', 1, '2025-02-01 10:00:00', 'APPROVED'),
-(2, 3, 1, '2025-03-01 11:00:00', NULL, NULL, 'PENDING'),
-(3, 2, 3, '2025-03-02 12:00:00', 1, '2025-03-02 13:00:00', 'REJECTED');
