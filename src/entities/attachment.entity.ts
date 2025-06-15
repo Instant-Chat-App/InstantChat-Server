@@ -16,7 +16,7 @@ export class Attachment {
   @Column({ type: 'enum', enum: AttachType })
   type!: AttachType;
 
-  @ManyToOne(() => Message)
+  @ManyToOne(() => Message, message => message.attachments)
   @JoinColumn({ name: 'message_id' })
   message?: Message;
 } 
