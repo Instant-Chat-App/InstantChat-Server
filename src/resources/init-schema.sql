@@ -44,8 +44,7 @@ CREATE TABLE "accounts" (
 
 CREATE TABLE "users" (
   "user_id" INT PRIMARY KEY,
-  "first_name" VARCHAR,
-  "last_name" VARCHAR,
+  "full_name" VARCHAR,
   "email" VARCHAR,
   "avatar" VARCHAR,
   "dob" DATE,
@@ -88,8 +87,7 @@ CREATE TABLE "messages" (
   "created_at" TIMESTAMP,
   "is_edited" BOOLEAN,
   "is_deleted" BOOLEAN,
-  "reply_to" INTEGER,
-  "is_pin" BOOLEAN
+  "reply_to" INTEGER
 );
 
 CREATE TABLE "message_status"
@@ -115,16 +113,6 @@ CREATE TABLE "attachments" (
   "type" attach_type
 );
 
-CREATE TABLE "chat_join_requests" (
-  "request_id" SERIAL PRIMARY KEY,
-  "chat_id" INTEGER,
-  "requester_id" INTEGER,
-  "requested_at" TIMESTAMP,
-  "approved_by" INTEGER,
-  "approved_at" TIMESTAMP,
-  "status" join_status
-);
-
 CREATE INDEX "idx_accounts_phone" ON "accounts" ("phone");
 
 CREATE INDEX "idx_users_email" ON "users" ("email");
@@ -144,10 +132,6 @@ CREATE INDEX "idx_message_status_message_id" ON "message_status" ("message_id");
 CREATE INDEX "idx_message_reactions_message_id" ON "message_reactions" ("message_id");
 
 CREATE INDEX "idx_attachments_message_id" ON "attachments" ("message_id");
-
-CREATE INDEX "idx_chat_join_requests_chat_id" ON "chat_join_requests" ("chat_id");
-
-CREATE INDEX "idx_chat_join_requests_requester_id" ON "chat_join_requests" ("requester_id");
 
 ALTER TABLE "users" ADD CONSTRAINT "fk_users_accounts" FOREIGN KEY  ("user_id") REFERENCES  "accounts" ("account_id");
 
@@ -177,8 +161,4 @@ ALTER TABLE "message_reactions" ADD FOREIGN KEY ("user_id") REFERENCES "users" (
 
 ALTER TABLE "attachments" ADD FOREIGN KEY ("message_id") REFERENCES "messages" ("message_id");
 
-ALTER TABLE "chat_join_requests" ADD FOREIGN KEY ("chat_id") REFERENCES "chats" ("chat_id");
-
-ALTER TABLE "chat_join_requests" ADD FOREIGN KEY ("requester_id") REFERENCES "users" ("user_id");
-
-ALTER TABLE "chat_join_requests" ADD FOREIGN KEY ("approved_by") REFERENCES "users" ("user_id");
+ALTER TABLE "messages" ADD CONSTRAINT fk_messages_replyto FOREIGN KEY ("reply_to") REFERENCES "messages"("message_id");

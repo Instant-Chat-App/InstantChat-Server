@@ -10,6 +10,8 @@ import { Chat } from './chat.entity';
 import { User } from './user.entity';
 import { MessageStatus } from './message-status.entity';
 import { Reaction } from './enum';
+import { Attachment } from './attachment.entity';
+import { MessageReaction } from './message-reaction.entity';
 
 @Entity('messages')
 export class Message {
@@ -37,9 +39,6 @@ export class Message {
   @Column({ type: 'int', name: 'reply_to', nullable: true })
   replyTo?: number;
 
-  @Column({ name: 'is_pin', type: 'boolean', default: false })
-  isPin!: boolean;
-
   @ManyToOne(() => Chat, chat => chat.messages)
   @JoinColumn({ name: 'chat_id' })
   chat!: Chat;
@@ -53,5 +52,11 @@ export class Message {
   replyToMessage?: Message;
 
   @OneToMany(() => MessageStatus, status => status.message)
-  messageStatus?: MessageStatus[];
+  messageStatus!: MessageStatus[];
+
+  @OneToMany(() => Attachment, attachment => attachment.message)
+  attachments!: Attachment[];
+
+  @OneToMany(() => MessageReaction, reaction => reaction.message)
+  reactions!: MessageReaction[];
 }
