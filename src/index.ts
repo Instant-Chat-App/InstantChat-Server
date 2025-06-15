@@ -1,9 +1,5 @@
-import express, { Request, Response } from 'express';
-import dotenv from 'dotenv';
-import ChatController from './controllers/chat.controller';
-import ChatRepository from './repository/chat.repository';
+import express, {  } from 'express';
 import initApplication from './config/init-application';
-import { create } from 'domain';
 import { createServer } from 'http';
 import { getEnv } from './utils/get-env.service';
 import routerConfig from './config/router.config';
