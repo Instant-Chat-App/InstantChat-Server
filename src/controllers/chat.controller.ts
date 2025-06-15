@@ -18,4 +18,15 @@ export default class ChatController {
             res.status(500).json({ message: "Internal server error" });
         }
     }
+    async getCurrentMember(req: any, res: any) {
+        try {
+            const userId = Number(req.params.userId);
+            const chatId = Number(req.params.chatId);
+            const member = await this.chatService.getCurrentMember(userId, chatId);
+            res.status(200).json(member);
+        } catch (error) {
+            console.error("Error fetching current member:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
 }
