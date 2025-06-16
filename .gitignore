@@ -33,4 +33,4 @@ Thumbs.db
 .env
 
 #migration files
-src\resources\*.ts
+src/resources/*.ts
