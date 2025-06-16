@@ -3,28 +3,30 @@ import ChatController from "../controllers/chat.controller";
 import { DataResponse } from "../dtos/responses/DataResponse";
 import { uploadChatCover } from "../middlewares/upload.middleware";
 import multer from "multer";
+import { authMiddleware } from "../middlewares/auth.middleware";
+import { log } from "console";
 
 const chatRouter = Router();
 const chatController = new ChatController();
 // Get user's chats
-chatRouter.get("/:userId", (req, res) => {
+chatRouter.get("", authMiddleware, (req, res) => {
     chatController.getUserChats(req, res);
 });
 
 // Get chat by ID
-chatRouter.get("/chat/:chatId", (req, res) => {
+chatRouter.get("/:chatId", authMiddleware, (req, res) => {
     chatController.getChatById(req, res);
 });
 
 // Get current member in a chat
-chatRouter.get("/:chatId/member/:userId", (req, res) => {
+chatRouter.get("/:chatId/me", authMiddleware, (req, res) => {
     chatController.getCurrentMember(req, res);
 });
 
 // Create new chat (private, group, or channel)
-chatRouter.post("/", (req, res) => {
+chatRouter.post("/", authMiddleware, (req, res) => {
     const chatType = (req.query.chatType as string)?.toUpperCase();
-    console.log(req.body)
+
     if (chatType === "PRIVATE") {
         chatController.createPrivateChat(req, res);
     } else if (chatType === "GROUP") {
@@ -37,48 +39,51 @@ chatRouter.post("/", (req, res) => {
 });
 
 // Add user to chat
-chatRouter.post("/chat/:chatId/members", (req, res) => {
+chatRouter.post("/:chatId/members", authMiddleware, (req, res) => {
     chatController.addUserToChat(req, res);
 });
 
 // Kick user from chat
-chatRouter.delete("/chat/:chatId/members/:userId", (req, res) => {
+chatRouter.delete("/:chatId/members", authMiddleware, (req, res) => {
     chatController.kickUserFromChat(req, res);
 });
 
 // Leave chat
-chatRouter.delete("/chat/:chatId/leave", (req, res) => {
+chatRouter.delete("/:chatId/leave", authMiddleware, (req, res) => {
     chatController.leaveChat(req, res);
 });
 
 // Delete chat
-chatRouter.delete("/chat/:chatId", (req, res) => {
+chatRouter.delete("/:chatId", authMiddleware, (req, res) => {
     chatController.deleteChat(req, res);
 });
 
 // Change chat name
-chatRouter.patch("/chat/:chatId/name", (req, res) => {
+chatRouter.patch("/:chatId/name", authMiddleware, (req, res) => {
     chatController.changeChatName(req, res);
 });
 
 // Change chat cover image
-chatRouter.patch("/chat/:chatId/cover", (req, res, next) => {
+chatRouter.patch("/:chatId/cover", (req, res, next) => {
     uploadChatCover(req, res, err => {
         if (err instanceof multer.MulterError) {
             return res.status(400).json(DataResponse.badRequest("File too large, max 10MB", err.message));
         }
-    })
-}, (req, res) => {
-    chatController.changeChatCoverImage(req, res);
-});
+        next();
+    });
+},
+    authMiddleware,
+    (req, res) => {
+        chatController.changeChatCoverImage(req, res);
+    });
 
 // Get chat members
-chatRouter.get("/chat/:chatId/members", (req, res) => {
+chatRouter.get("/:chatId/members", authMiddleware,(req, res) => {
     chatController.getChatMembers(req, res);
 });
 
 // Search chats
-chatRouter.get("/search/:userId", (req, res) => {
+chatRouter.get("/search/query", authMiddleware, (req, res) => {
     chatController.findChats(req, res);
 });
 
