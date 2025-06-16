@@ -253,20 +253,22 @@ export default class ChatController {
 
     public async changeChatCoverImage(req: Request, res: Response) {
         try {
-            const userId = this.validateId(req.body.userId, 'userId');
+            const userId = 1;
             const chatId = this.validateId(req.params.chatId, 'chatId');
-
+            const coverImage = req.file?.path;
+            logger.info(coverImage);
+            if(!coverImage){
+                return res.status(400).json(DataResponse.error("Invalid coverImage", "coverImage must be a valid file"));
+            }
             if (userId === null) {
                 return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
             }
             if (chatId === null) {
                 return res.status(400).json(DataResponse.error("Invalid chatId", "chatId must be a valid number"));
             }
-            if (!req.body.coverImage || typeof req.body.coverImage !== 'string') {
-                return res.status(400).json(DataResponse.error("Invalid coverImage", "coverImage must be a non-empty string"));
-            }
 
-            const chat = await this.chatService.changeChatCoverImage(userId, chatId, req.body.coverImage);
+
+            const chat = await this.chatService.changeChatCoverImage(userId, chatId, coverImage);
             res.json(DataResponse.success(chat, "Chat cover image changed successfully"));
         } catch (error: any) {
             res.status(500).json(DataResponse.error("Failed to change chat cover image", error.message));

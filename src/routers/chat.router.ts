@@ -1,10 +1,10 @@
 import { Router } from "express";
 import ChatController from "../controllers/chat.controller";
 import { DataResponse } from "../dtos/responses/DataResponse";
+import { uploadChatCover } from "../middlewares/upload.middleware";
 
 const chatRouter = Router();
 const chatController = new ChatController();
-
 // Get user's chats
 chatRouter.get("/:userId", (req, res) => {
     chatController.getUserChats(req, res);
@@ -61,7 +61,7 @@ chatRouter.patch("/chat/:chatId/name", (req, res) => {
 });
 
 // Change chat cover image
-chatRouter.patch("/chat/:chatId/cover", (req, res) => {
+chatRouter.patch("/chat/:chatId/cover", uploadChatCover, (req, res) => {
     chatController.changeChatCoverImage(req, res);
 });
 

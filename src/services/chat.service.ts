@@ -4,6 +4,7 @@ import { ChatMember } from "../entities/chat-member.entity";
 import { ChatType } from "../entities/enum";
 import ChatRepository from "../repository/chat.repository";
 import { logger } from "../utils/logger";
+import { User } from "../entities/user.entity";
 
 export class ChatService {
     private chatRepository: ChatRepository;
@@ -74,7 +75,10 @@ export class ChatService {
                 chatName: request.name
             });
             logger.info(`Created new group chat with ID ${chat.chatId} and name ${request.name}`);
-
+            if(request.members.length < 2) {
+                logger.warn(`Not enough members to create group chat: ${request.members.length}`);
+                throw new Error('Not enough members to create group chat');
+            }
             // Add owner and members
             const members = [
                 { memberId: userId, isOwner: true },
@@ -139,7 +143,7 @@ export class ChatService {
                 return;
             }
 
-            await this.chatRepository.addUserToChat(chatId, userId);
+            await this.chatRepository.addUserToChat(userId, chatId);
             logger.info(`Added member with ID ${userId} to chat ${chatId}`);
         } catch (error) {
             logger.error(`Failed to add member to chat: ${error}`);
@@ -278,7 +282,7 @@ export class ChatService {
         return updatedChat;
     }
 
-    async getChatMembers(chatId: number): Promise<ChatMember[]> {
+    async getChatMembers(chatId: number): Promise<User[]> {
         const chat = await this.chatRepository.getChatById(chatId);
         if (!chat) {
             logger.warn(`Chat with ID ${chatId} not found`);

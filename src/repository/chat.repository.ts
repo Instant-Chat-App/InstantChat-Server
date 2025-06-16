@@ -270,11 +270,14 @@ export default class ChatRepository extends BaseRepository<Chat> {
 
     async getChatMembers(
         chatId: number
-    ): Promise<ChatMember[]> {
-        return await this.manager
-            .createQueryBuilder(ChatMember, 'chatMember')
-            .where('chatMember.chat_id = :chatId', { chatId })
+    ): Promise<User[]> {
+        const users = await this.manager
+            .createQueryBuilder(User, "user")
+            .innerJoin(ChatMember, "cm", "cm.memberId = user.userId")
+            .where("cm.chatId = :chatId", { chatId })
             .getMany();
+
+        return users;
     }
 
     async findChats(
