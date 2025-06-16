@@ -46,7 +46,7 @@ export class ChatService {
         const existingChat = await this.chatRepository.findExistingPrivateChat(userId, otherUserId);
         if (existingChat) {
             logger.info(`Found existing private chat between ${userId} and ${otherUserId}, terminating creation.`);
-            throw new Error('Private chat already exists');
+            return existingChat;
         }
 
         if (userId === otherUserId) {

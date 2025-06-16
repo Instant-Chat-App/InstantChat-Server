@@ -14,55 +14,84 @@ export default class ChatRepository extends BaseRepository<Chat> {
         super(Chat);
     }
 
-    async getUserChats(
-        userId: number
-    ): Promise<Chat[]> {
+    async getUserChats(userId: number): Promise<Chat[]> {
+        // Subquery lấy tin nhắn mới nhất trong mỗi chat
+        const latestMsgSubquery = this.manager
+            .createQueryBuilder(Message, 'm')
+            .select('m.message_id')
+            .where('m.chat_id = chat.chat_id')
+            .orderBy('m.created_at', 'DESC')
+            .limit(1);
 
-        const subQuery = this.manager
-            .createQueryBuilder(Message, 'message')
-            .select('MAX(message.createdAt)', 'maxCreatedAt')
-            .where('message.chatId = chat.chatId');
-
-        let queryBuilder = this.manager
+        const raw = await this.manager
             .createQueryBuilder(Chat, 'chat')
+            // lọc ra các chat mà người dùng là thành viên
             .innerJoin(
                 ChatMember,
-                'chatMember',
-                'chatMember.chat_id = chat.chat_id AND chatMember.member_id = :userId', { userId })
-            .leftJoin(
+                'cm',
+                'cm.chat_id = chat.chat_id AND cm.member_id = :userId',
+                { userId }
+            )
+            // lấy ra các chat có tin nhắn mới nhất
+            .innerJoin(
                 Message,
                 'message',
-                `message.chatId = chat.chatId AND message.createdAt = (${subQuery.getQuery()})`
+                `message.message_id = (${latestMsgSubquery.getQuery()})`
             )
+            .setParameters(latestMsgSubquery.getParameters())
+            // lấy status của tin nhắn
             .leftJoin(
                 MessageStatus,
-                'messageStatus',
-                'messageStatus.messageId = message.messageId AND messageStatus.memberId = :userId', { userId }
+                'ms',
+                'ms.message_id = message.message_id AND ms.member_id = :userId',
+                { userId }
+            )
+            // in4 người gửi
+            .leftJoin(
+                User,
+                'sender',
+                'sender.user_id = message.sender_id'
+            )
+            // lấy in4 private chat
+            .leftJoin(
+                ChatMember,
+                'pm',
+                `pm.chat_id = chat.chat_id AND pm.member_id != :userId AND chat.type = 'PRIVATE'`,
+                { userId }
             )
             .leftJoin(
                 User,
-                'user',
-                'user.user_id = message.sender_id'
+                'partner',
+                'partner.user_id = pm.member_id'
             )
-            .select([])
-            .addSelect('chat.chat_id', 'chatId')
-            .addSelect('chat.chat_name', 'chatName')
-            .addSelect('chat.type', 'chatType')
-            .addSelect('chat.cover_image', 'coverImage')
-            .addSelect('message.message_id', 'messageId')
-            .addSelect('user.full_name', 'senderName')
-            .addSelect('message.content', 'messageContent')
-            .addSelect('message.created_at', 'messageCreatedAt')
-            .addSelect('message.sender_id', 'messageSenderId')
-            .addSelect('messageStatus.status', 'readStatus')
-            .orderBy('message.createdAt', 'DESC');
+            .select([
+                'chat.chat_id AS "chatId"',
+                'chat.type    AS "chatType"',
+                `CASE
+                    WHEN chat.type = 'PRIVATE' AND partner.full_name IS NOT NULL
+                    THEN partner.full_name
+                ELSE chat.chat_name
+                END AS "displayName"`,
+                `CASE
+                    WHEN chat.type = 'PRIVATE' AND partner.avatar IS NOT NULL
+                    THEN partner.avatar
+                ELSE chat.cover_image
+                END AS "displayAvatar"`,
+                'message.message_id    AS "messageId"',
+                'sender.full_name      AS "senderName"',
+                'message.content       AS "messageContent"',
+                'message.created_at    AS "messageCreatedAt"',
+                'message.sender_id     AS "messageSenderId"',
+                'ms.status             AS "readStatus"'
+            ])
+            .orderBy('message.created_at', 'DESC');
 
-        const results = await queryBuilder.getRawMany();
-        if (!results || results.length === 0) {
-            return [];
-        }
-        return results;
+        const results = await raw.getRawMany();
+        return results || [];
     }
+
+
+
 
     async findExistingPrivateChat(userId: number, otherUserId: number): Promise<Chat | null> {
         return await this.manager

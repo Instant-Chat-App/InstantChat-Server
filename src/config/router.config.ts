@@ -7,6 +7,7 @@ const routerConfig = Router();
 routerConfig.use("/chats", chatRouter);
 
 routerConfig.use("/messages", messageRouter);
+
 routerConfig.use("/auth", authRouter);
 
 

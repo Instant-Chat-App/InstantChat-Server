@@ -5,7 +5,7 @@ export enum ChatType {
 }
 
 export enum AttachType {
-  FILE = 'FILE',
+  RAW = 'RAW',
   IMAGE = 'IMAGE',
   VIDEO = 'VIDEO',
 }

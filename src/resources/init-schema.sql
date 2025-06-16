@@ -5,9 +5,9 @@ CREATE TYPE "chat_type" AS ENUM (
 );
 
 CREATE TYPE "attach_type" AS ENUM (
-  'FILE',
   'IMAGE',
-  'VIDEO'
+  'VIDEO',
+  'RAW',
 );
 
 CREATE TYPE "message_status_enum" AS ENUM (
@@ -84,9 +84,9 @@ CREATE TABLE "messages" (
   "chat_id" INTEGER,
   "sender_id" INTEGER,
   "content" TEXT,
-  "created_at" TIMESTAMP,
-  "is_edited" BOOLEAN,
-  "is_deleted" BOOLEAN,
+  "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  "is_edited" BOOLEAN DEFAULT FALSE,
+  "is_deleted" BOOLEAN DEFAULT FALSE,
   "reply_to" INTEGER
 );
 

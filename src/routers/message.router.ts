@@ -1,20 +1,34 @@
 import { Router } from "express";
 import MessageController from "../controllers/message.controller";
 import { logger } from "../utils/logger";
+import { authMiddleware } from "../middlewares/auth.middleware";
+import { uploadMessageAttachment } from "../middlewares/upload.middleware";
 
 let messageRouter = Router();
 
 const messageController = new MessageController();
-messageRouter.get("/:chatId/:userId", async (req, res) => {
-    const chatId = parseInt(req.params.chatId);
-    const userId = parseInt(req.params.userId);
-    try {
-        const messages: any = await messageController.getUserChatMessages(userId, chatId);
-        logger.info(`Retrieved messages for chatId: ${chatId}, userId: ${userId}`);
-        res.status(200).json(messages);
-    } catch (error) {
-        logger.error(`Failed to retrieve messages for chatId: ${chatId}, userId: ${userId}`, error);
-        res.status(500).json({ error: "Failed to retrieve messages" });
-    }
+messageRouter.get("/:chatId", authMiddleware, async (req, res) => {
+    messageController.getUserChatMessages(req, res);
 });
+
+messageRouter.post("", uploadMessageAttachment,authMiddleware, async (req, res) => {
+    messageController.sendMessage(req, res);
+});
+
+messageRouter.patch("/:messageId", authMiddleware, async (req, res) => {
+    messageController.editMessage(req, res);
+});
+
+messageRouter.delete("/:messageId", authMiddleware, async (req, res) => {
+    messageController.deleteMessage(req, res);
+});
+
+messageRouter.post("/react", authMiddleware, async (req, res) => {
+    messageController.reactToMessage(req, res);
+});
+
+messageRouter.delete("/react/:messageId", authMiddleware, async (req, res) => {
+    messageController.deleteReaction(req, res);
+});
+
 export default messageRouter;
