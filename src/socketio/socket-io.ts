@@ -4,6 +4,10 @@ import { logger } from "../utils/logger";
 import { createClient } from "redis";
 import { getEnv } from "../utils/get-env.service";
 import { createAdapter } from "@socket.io/redis-adapter";
+import MessageController from "../controllers/message.controller";
+import { handleMessageEvents } from "./handlers/message.handler";
+import { authMiddleware } from "../middlewares/auth.middleware";
+import socketAuthMiddleware from "../middlewares/socket.middleware";
 
 let socketIO: SocketIOServer | null = null;
 export default function setupSocket(
@@ -15,7 +19,7 @@ export default function setupSocket(
         logger.warn("Socket.IO is already initialized, returning existing instance.");
         return socketIO;
     }
-    
+
     const io = new SocketIOServer(server, {
         cors: {
             origin: "*",
@@ -35,8 +39,11 @@ export default function setupSocket(
             io.adapter(createAdapter(pubClient, subClient));
             logger.info("Redis connected successfully for Socket.IO");
 
+            io.use(socketAuthMiddleware);
             io.on("connection", (socket) => {
                 logger.info(`New client connected: ${socket.id}`);
+
+                handleMessageEvents(socket, io);
 
                 socket.on("disconnect", () => {
                     logger.info(`Client disconnected: ${socket.id}`);
@@ -45,28 +52,11 @@ export default function setupSocket(
                 socket.on("error", (error) => {
                     logger.error(`Socket error: ${error}`);
                 });
-
-                //WORK IN PROGRESS
-                socket.on("joinRoom", (room) => {
-                    socket.join(room);
-                    logger.info(`Client ${socket.id} joined room: ${room}`);
-                });
-
-                socket.on("sendMessage", (data) => {
-                    const { room, message } = data;
-                    io.to(room).emit("message", message);
-                    logger.info(`Message sent to room ${room}: ${message}`);
-                });
             });
         })
         .catch((error) => {
             logger.error("Failed to connect to Redis:", error);
         });
-
-
-
-
-
 
     logger.info("Socket.IO initialized successfully");
 
