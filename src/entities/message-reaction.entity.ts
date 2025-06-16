@@ -14,6 +14,9 @@ export class MessageReaction {
     @Column({ type: 'enum', enum: Reaction })
     type!: Reaction;
 
+    @Column({ name: 'created_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+    createdAt!: Date;
+
     @ManyToOne(() => Message, message => message.reactions)
     @JoinColumn({ name: 'message_id' })
     message!: Message;

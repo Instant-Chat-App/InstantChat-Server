@@ -103,6 +103,7 @@ CREATE TABLE "message_reactions" (
   "user_id" INTEGER,
   "message_id" INTEGER,
   "type" reaction,
+  "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY ("user_id", "message_id")
 );
 
