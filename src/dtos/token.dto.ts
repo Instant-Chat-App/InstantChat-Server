@@ -1,6 +1,7 @@
 export interface TokenPayload {
   accountId: number;
   phone: string;
+  tokenType?: 'access' | 'refresh';
   iat?: number;
   exp?: number;
 }
