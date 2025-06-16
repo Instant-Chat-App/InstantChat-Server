@@ -98,7 +98,6 @@ export default class AuthController {
   async getProfile(req: Request, res: Response) {
     try {
       const user = req.user;
-
       if (!user) {
         return res
           .status(401)
