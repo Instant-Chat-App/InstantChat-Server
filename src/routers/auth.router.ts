@@ -3,8 +3,10 @@ import AuthController from "../controllers/auth.controller";
 import { validate } from "../middlewares/validate.middleware";
 import {
   changePasswordSchema,
+  forgotPasswordSchema,
   loginSchema,
   registerSchema,
+  resetPasswordSchema,
   updateProfileSchema,
 } from "../schemas/auth.schema";
 import { authMiddleware } from "../middlewares/auth.middleware";
@@ -50,6 +52,22 @@ authRouter.put(
 
 authRouter.post("/avatar", authMiddleware, uploadUserAvatar, (req, res) =>
   authController.uploadAvatar(req, res)
+);
+
+authRouter.post(
+  "/forgot-password",
+  validate(forgotPasswordSchema),
+  (req, res) => {
+    authController.forgotPassword(req, res);
+  }
+);
+
+authRouter.post(
+  "/reset-password",
+  validate(resetPasswordSchema),
+  (req, res) => {
+    authController.resetPassword(req, res);
+  }
 );
 
 export default authRouter;
