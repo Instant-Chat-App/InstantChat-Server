@@ -1,9 +1,10 @@
 import { v2 as cloudinary } from "cloudinary";
+import { getEnv } from "../../utils/get-env.service";
 
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "dm868w0ib",
-  api_key: process.env.CLOUDINARY_API_KEY || "186617721122458",
-  api_secret: process.env.CLOUDINARY_API_SECRET || "aLMrdjw6WRR3RN09EivFc8WPoyM",
+  cloud_name: getEnv("CLOUDINARY_CLOUD_NAME"),
+  api_key: getEnv("CLOUDINARY_API_KEY"),
+  api_secret: getEnv("CLOUDINARY_API_SECRET"),
 });
 
 export default cloudinary;
