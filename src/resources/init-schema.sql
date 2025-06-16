@@ -75,7 +75,7 @@ CREATE TABLE "chat_members" (
   "chat_id" INTEGER,
   "member_id" INTEGER,
   "is_owner" BOOLEAN,
-  "joined_at" DATE,
+  "joined_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY ("chat_id", "member_id")
 );
 
