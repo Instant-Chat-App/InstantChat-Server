@@ -1,6 +1,6 @@
 export interface TokenPayload {
   accountId: number;
-  phoneNumber: string;
+  phone: string;
   iat?: number;
   exp?: number;
 }

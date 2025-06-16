@@ -1,7 +1,7 @@
-import { Gender } from "../entities/enum";
+import { Gender } from "../../entities/enum";
 
 export interface RegisterRequest {
-    phoneNumber: string;
+    phone: string;
     password: string;
     fullName: string;
     email: string;
