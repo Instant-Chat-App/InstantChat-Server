@@ -165,7 +165,7 @@ export class AuthService {
       return await this.generateTokens(payload.accountId, payload.phone);
     } catch (error) {
       logger.error(`Error refreshing token: ${error}`);
-      throw new Error("Refresh token failed");
+      throw new Error("Fail to refresh token");
     }
   }
 
