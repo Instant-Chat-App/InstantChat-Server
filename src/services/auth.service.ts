@@ -6,10 +6,12 @@ import { getEnv } from "../utils/get-env.service";
 import { User } from "../entities/user.entity";
 import { TokenPair, TokenPayload } from "../dtos/token.dto";
 import { redisService } from "./redis.service";
-import { LoginRequest } from "../dtos/login-request.dto";
-import { AuthResponse } from "../dtos/auth-response.dto";
+import { LoginRequest } from "../dtos/requests/login-request.dto";
+import { AuthResponse } from "../dtos/responses/auth-response.dto";
 import { logger } from "../utils/logger";
-import { RegisterRequest } from "../dtos/register-request.dto";
+import { RegisterRequest } from "../dtos/requests/register-request.dto";
+import { DataResponse } from "../dtos/responses/DataResponse";
+import { ProfileResponse } from "../dtos/responses/profile.dto";
 
 export class AuthService {
   private readonly accountRepository = AppDataSource.getRepository(Account);
@@ -33,9 +35,9 @@ export class AuthService {
 
   private async generateTokens(
     accountId: number,
-    phoneNumber: string
+    phone: string
   ): Promise<TokenPair> {
-    const payload: TokenPayload = { accountId, phoneNumber };
+    const payload: TokenPayload = { accountId, phone };
 
     const accessToken = jwt.sign(payload, this.ACCESS_TOKEN_SECRET, {
       expiresIn: "15m",
@@ -55,16 +57,17 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async login(request: LoginRequest): Promise<AuthResponse | null> {
+  async login(
+    request: LoginRequest
+  ): Promise<AuthResponse | DataResponse<null>> {
     try {
       const account = await this.accountRepository.findOne({
-        where: { phone: request.phoneNumber },
+        where: { phone: request.phone },
         relations: ["user"],
       });
 
       if (!account) {
-        logger.warn(`Phone number not existed: ${request.phoneNumber}`);
-        return null;
+        return DataResponse.badRequest("Phone number not existed");
       }
 
       const isValidPassword = await bcrypt.compare(
@@ -73,10 +76,9 @@ export class AuthService {
       );
 
       if (!isValidPassword) {
-        logger.warn(
-          `Invalid password attempt for phone number: ${request.phoneNumber}`
+        return DataResponse.badRequest(
+          "Invalid password attempt for phone number"
         );
-        return null;
       }
 
       const { accessToken, refreshToken } = await this.generateTokens(
@@ -91,20 +93,20 @@ export class AuthService {
     }
   }
 
-  async register(request: RegisterRequest) {
+  async register(request: RegisterRequest): Promise<AuthResponse | DataResponse<null>> {
     try {
       const existingAccount = await this.accountRepository.findOne({
-        where: { phone: request.phoneNumber },
+        where: { phone: request.phone },
       });
 
       if (existingAccount) {
-        return null;
+        return DataResponse.badRequest("Phone number existed");
       }
 
       const passwordHash = await bcrypt.hash(request.password, 10);
 
       const account = new Account();
-      account.phone = request.phoneNumber;
+      account.phone = request.phone;
       account.password = passwordHash;
       account.isActive = true;
 
@@ -115,7 +117,8 @@ export class AuthService {
       user.fullName = request.fullName;
       user.email = request.email;
       user.avatar = request.avatar;
-      user.dob = request.dob;
+      user.dob =
+        request.dob instanceof Date ? request.dob : new Date(request.dob);
       user.gender = request.gender;
       user.bio = request.bio;
 
@@ -133,7 +136,7 @@ export class AuthService {
     }
   }
 
-  async refreshToken(token: string): Promise<TokenPair | null> {
+  async refreshToken(token: string): Promise<TokenPair | DataResponse<null>> {
     try {
       const payload = jwt.verify(
         token,
@@ -143,19 +146,44 @@ export class AuthService {
       const storedAccountId = await redisService.verifyRefreshToken(token);
 
       if (!storedAccountId || storedAccountId !== payload.accountId) {
-        logger.warn(
-          `Attempt to use invalid refresh token for account: ${payload.accountId}`
-        );
-        return null;
+        return DataResponse.unauthorized("Invalid refresh token");
       }
 
       await redisService.deleteRefreshToken(token);
 
-      return await this.generateTokens(payload.accountId, payload.phoneNumber);
+      return await this.generateTokens(payload.accountId, payload.phone);
     } catch (error) {
       logger.error(`Error refreshing token: ${error}`);
-      return null;
+      throw new Error("Refresh token failed");
     }
+  }
+
+  async getProfile(accountId: number): Promise<ProfileResponse| DataResponse<null>> {
+    const account = await this.accountRepository.findOne({
+      where: { accountId: accountId },
+      relations: { user: true },
+    });
+
+    if (!account) {
+      return DataResponse.notFound("Account not found");
+    }
+    
+    if (!account.user) {
+      return DataResponse.notFound("User not found");
+    }
+    
+    return {
+      id: account.accountId,
+      phone: account.phone || "",
+      user: {
+        fullName: account.user.fullName || "",
+        email: account.user.email || "",
+        avatar: account.user.avatar || "",
+        dob: account.user.dob || new Date(),
+        gender: String(account.user.gender || ""),
+        bio: account.user.bio || ""
+      }
+    };
   }
 
   async logout(token: string): Promise<boolean> {
