@@ -46,7 +46,7 @@ export class ChatService {
         const existingChat = await this.chatRepository.findExistingPrivateChat(userId, otherUserId);
         if (existingChat) {
             logger.info(`Found existing private chat between ${userId} and ${otherUserId}, terminating creation.`);
-            return existingChat;
+            throw new Error('Private chat already exists');
         }
 
         if (userId === otherUserId) {
@@ -118,7 +118,7 @@ export class ChatService {
         }
     }
 
-    async addUserToChat(ownerId: number, chatId: number, userId: number): Promise<void> {
+    async addUserToChat(ownerId: number, chatId: number, members: number[]): Promise<void> {
         try {
             const chat = await this.chatRepository.getChatById(chatId);
             if (!chat) {
@@ -137,21 +137,22 @@ export class ChatService {
                 throw new Error(`User ${ownerId} is not an owner of chat ${chatId}`);
             }
 
-            const memberExists = await this.chatRepository.checkIfUserAlreadyInChat(userId, chatId);
-            if (memberExists) {
-                logger.warn(`Member with ID ${userId} already exists in chat ${chatId}`);
-                return;
+            for (const userId of members) {
+                const memberExists = await this.chatRepository.checkIfUserAlreadyInChat(userId, chatId);
+                if (memberExists) {
+                    logger.warn(`Member with ID ${userId} already exists in chat ${chatId}`);
+                    continue;
+                }
+                await this.chatRepository.addUserToChat(userId, chatId);
+                logger.info(`Added member with ID ${userId} to chat ${chatId}`);
             }
-
-            await this.chatRepository.addUserToChat(userId, chatId);
-            logger.info(`Added member with ID ${userId} to chat ${chatId}`);
         } catch (error) {
             logger.error(`Failed to add member to chat: ${error}`);
             throw new Error('Failed to add member to chat');
         }
     }
 
-    async kickUserFromChat(ownerId: number, chatId: number, userId: number): Promise<void> {
+    async kickUserFromChat(ownerId: number, chatId: number, member: number): Promise<void> {
         const chat = await this.chatRepository.getChatById(chatId);
         if (!chat) {
             logger.warn(`Chat with ID ${chatId} not found`);
@@ -166,10 +167,10 @@ export class ChatService {
             logger.warn(`User ${ownerId} is not an owner of chat ${chatId}`);
             throw new Error(`User ${ownerId} is not an owner of chat ${chatId}`);
         }
-        const memberToKick = await this.getCurrentMember(userId, chatId);
+        const memberToKick = await this.getCurrentMember(member, chatId);
         if (!memberToKick) {
-            logger.warn(`User ${userId} is not a member of chat ${chatId}`);
-            throw new Error(`User ${userId} is not a member of chat ${chatId}`);
+            logger.warn(`User ${member} is not a member of chat ${chatId}`);
+            throw new Error(`User ${member} is not a member of chat ${chatId}`);
         }
         
         if (memberToKick.isOwner) {
@@ -177,8 +178,8 @@ export class ChatService {
             throw new Error(`Cannot kick owner from chat ${chatId}`);
         }
 
-        await this.chatRepository.kickUserFromChat(ownerId, userId, chatId);
-        logger.info(`User ${userId} has been kicked from chat ${chatId}`);
+        await this.chatRepository.kickUserFromChat(ownerId, member, chatId);
+        logger.info(`User ${member} has been kicked from chat ${chatId}`);
     }
 
     async leaveChat(userId: number, chatId: number): Promise<void> {
@@ -282,11 +283,17 @@ export class ChatService {
         return updatedChat;
     }
 
-    async getChatMembers(chatId: number): Promise<User[]> {
+    async getChatMembers(userId: number, chatId: number): Promise<User[]> {
         const chat = await this.chatRepository.getChatById(chatId);
+
         if (!chat) {
             logger.warn(`Chat with ID ${chatId} not found`);
             throw new Error(`Chat with ID ${chatId} not found`);
+        }
+        const member = await this.getCurrentMember(userId, chatId);
+        if (!member) {
+            logger.warn(`User ${userId} is not a member of chat ${chatId}`);
+            throw new Error(`User ${userId} is not a member of chat ${chatId}`);
         }
         return await this.chatRepository.getChatMembers(chatId);
     }
