@@ -1,10 +1,14 @@
-import { LoginRequest } from "../dtos/requests/login-request.dto";
+import { LoginRequest } from "../dtos/requests/LoginRequest";
 import { Request, Response } from "express";
 import { AuthService } from "../services/auth.service";
 import { logger } from "../utils/logger";
-import { RegisterRequest } from "../dtos/requests/register-request.dto";
+import { RegisterRequest } from "../dtos/requests/RegisterRequest";
 import { DataResponse } from "../dtos/responses/DataResponse";
 import "../middlewares/auth.middleware";
+import { UpdateProfileRequest } from "../dtos/requests/LoginProfileRequest";
+import { ChangePasswordRequest } from "../dtos/requests/ChangePasswordRequest";
+import { ForgotPasswordRequest } from "../dtos/requests/ForgotPasswordRequest";
+import { ResetPasswordRequest } from "../dtos/requests/ResetPasswordRequest";
 
 export default class AuthController {
   private readonly authService: AuthService;
@@ -56,16 +60,14 @@ export default class AuthController {
     try {
       const { refreshToken } = req.body;
 
-      const tokens = await this.authService.refreshToken(refreshToken);
-      if (tokens instanceof DataResponse) {
-        return res.status(tokens.code).json(tokens);
+      const result = await this.authService.refreshToken(refreshToken);
+      if (result instanceof DataResponse) {
+        return res.status(result.code).json(result);
       }
 
-      res.status(200).json({
-        success: true,
-        message: "Token refreshed successfully",
-        data: tokens,
-      });
+      res
+        .status(200)
+        .json(DataResponse.success(result, "Token refreshed successfully"));
     } catch (error: any) {
       logger.error(`Token refresh error: ${error}`);
       res
@@ -115,6 +117,157 @@ export default class AuthController {
         .json(DataResponse.success(result, "Get profile successfully"));
     } catch (error: any) {
       logger.error(`Get profile error: ${error}`);
+      res
+        .status(500)
+        .json(DataResponse.error("Internal server error", error.message));
+    }
+  }
+
+  async updateProfile(req: Request, res: Response) {
+    try {
+      const user = req.user;
+
+      if (!user) {
+        return res
+          .status(401)
+          .json(DataResponse.badRequest("User authentication required"));
+      }
+
+      const updateProfileRequest: UpdateProfileRequest = req.body;
+      const result = await this.authService.updateProfile(
+        user.accountId,
+        updateProfileRequest
+      );
+
+      if (result instanceof DataResponse) {
+        return res.status(result.code).json(result);
+      }
+
+      res
+        .status(200)
+        .json(DataResponse.success(result, "Profile updated successfully"));
+    } catch (error: any) {
+      logger.error(`Update profile error: ${error}`);
+      res
+        .status(500)
+        .json(DataResponse.error("Internal server error", error.message));
+    }
+  }
+
+  async changePassword(req: Request, res: Response) {
+    try {
+      const user = req.user;
+
+      if (!user) {
+        return res
+          .status(401)
+          .json(DataResponse.badRequest("User authentication required"));
+      }
+
+      const changePasswordRequest: ChangePasswordRequest = req.body;
+      const result = await this.authService.changePassword(
+        user.accountId,
+        changePasswordRequest
+      );
+
+      if (result instanceof DataResponse) {
+        return res.status(result.code).json(result);
+      }
+
+      res
+        .status(200)
+        .json(DataResponse.success(null, "Password changed successfully"));
+    } catch (error: any) {
+      logger.error(`Change password error: ${error}`);
+      res
+        .status(500)
+        .json(DataResponse.error("Internal server error", error.message));
+    }
+  }
+
+  async uploadAvatar(req: Request, res: Response) {
+    try {
+      const user = req.user;
+
+      if (!user) {
+        return res
+          .status(401)
+          .json(DataResponse.badRequest("User authentication required"));
+      }
+
+      // Check if file was uploaded successfully
+      if (!req.file) {
+        return res
+          .status(400)
+          .json(DataResponse.badRequest("No avatar image uploaded"));
+      }
+
+      // The file info is added by multer-storage-cloudinary
+      const cloudinaryFile = req.file as Express.Multer.File & {
+        path: string; // Contains the Cloudinary URL
+      };
+
+      // Update user avatar with Cloudinary URL
+      const result = await this.authService.updateAvatar(
+        user.accountId,
+        cloudinaryFile.path
+      );
+
+      if (result instanceof DataResponse) {
+        return res.status(result.code).json(result);
+      }
+
+      res
+        .status(200)
+        .json(DataResponse.success(result, "Avatar uploaded successfully"));
+    } catch (error: any) {
+      logger.error(`Avatar upload error: ${error}`);
+      res
+        .status(500)
+        .json(DataResponse.error("Internal server error", error.message));
+    }
+  }
+
+  async forgotPassword(req: Request, res: Response) {
+    try {
+      const forgotPasswordRequest: ForgotPasswordRequest = req.body;
+
+      const result = await this.authService.forgotPassword(
+        forgotPasswordRequest
+      );
+
+      if (result instanceof DataResponse) {
+        return res.status(result.code).json(result);
+      }
+
+      res
+        .status(200)
+        .json(DataResponse.success(null, "OTP sent to your phone"));
+    } catch (error: any) {
+      logger.error(`Forgot password error: ${error}`);
+      res
+        .status(500)
+        .json(DataResponse.error("Internal server error", error.message));
+    }
+  }
+
+  async resetPassword(req: Request, res: Response) {
+    try {
+      const resetPasswordRequest: ResetPasswordRequest = req.body;
+
+      const result = await this.authService.resetPassword(resetPasswordRequest);
+
+      if (result instanceof DataResponse) {
+        return res.status(result.code).json(result);
+      }
+
+      res
+        .status(200)
+        .json(
+          DataResponse.success(null, "Password has been reset successfully")
+        );
+    } catch (error: any) {
+      logger.error(`Reset password error: ${error}`);
       res
         .status(500)
         .json(DataResponse.error("Internal server error", error.message));

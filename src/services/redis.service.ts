@@ -73,6 +73,39 @@ class RedisService {
     return result === 1;
   }
 
+  async storeOTP(
+    phone: string,
+    otp: string,
+    expiryInSeconds: number = 300
+  ): Promise<void> {
+    try {
+      await this.client.set(`otp:${phone}`, otp, "EX", expiryInSeconds);
+    } catch (error) {
+      logger.error(`Error storing OTP: ${error}`);
+      throw new Error("Failed to store OTP");
+    }
+  }
+
+  async verifyOTP(phone: string, otp: string): Promise<boolean> {
+    try {
+      const storedOTP = await this.client.get(`otp:${phone}`);
+      return storedOTP === otp;
+    } catch (error) {
+      logger.error(`Error verifying OTP: ${error}`);
+      throw new Error("Failed to verify OTP");
+    }
+  }
+
+  async deleteOTP(phone: string): Promise<boolean> {
+    try {
+      const result = await this.client.del(`otp:${phone}`);
+      return result === 1;
+    } catch (error) {
+      logger.error(`Error deleting OTP: ${error}`);
+      throw new Error("Failed to delete OTP");
+    }
+  }
+
   async close(): Promise<void> {
     if (this.isConnected) {
       await this.client.quit();
