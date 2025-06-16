@@ -7,6 +7,8 @@ import { DataResponse } from "../dtos/responses/DataResponse";
 import "../middlewares/auth.middleware";
 import { UpdateProfileRequest } from "../dtos/requests/LoginProfileRequest";
 import { ChangePasswordRequest } from "../dtos/requests/ChangePasswordRequest";
+import { ForgotPasswordRequest } from "../dtos/requests/ForgotPasswordRequest";
+import { ResetPasswordRequest } from "../dtos/requests/ResetPasswordRequest";
 
 export default class AuthController {
   private readonly authService: AuthService;
@@ -221,6 +223,52 @@ export default class AuthController {
         .json(DataResponse.success(result, "Avatar uploaded successfully"));
     } catch (error: any) {
       logger.error(`Avatar upload error: ${error}`);
+      res
+        .status(500)
+        .json(DataResponse.error("Internal server error", error.message));
+    }
+  }
+
+  async forgotPassword(req: Request, res: Response) {
+    try {
+      const forgotPasswordRequest: ForgotPasswordRequest = req.body;
+
+      const result = await this.authService.forgotPassword(
+        forgotPasswordRequest
+      );
+
+      if (result instanceof DataResponse) {
+        return res.status(result.code).json(result);
+      }
+
+      res
+        .status(200)
+        .json(DataResponse.success(null, "OTP sent to your phone"));
+    } catch (error: any) {
+      logger.error(`Forgot password error: ${error}`);
+      res
+        .status(500)
+        .json(DataResponse.error("Internal server error", error.message));
+    }
+  }
+
+  async resetPassword(req: Request, res: Response) {
+    try {
+      const resetPasswordRequest: ResetPasswordRequest = req.body;
+
+      const result = await this.authService.resetPassword(resetPasswordRequest);
+
+      if (result instanceof DataResponse) {
+        return res.status(result.code).json(result);
+      }
+
+      res
+        .status(200)
+        .json(
+          DataResponse.success(null, "Password has been reset successfully")
+        );
+    } catch (error: any) {
+      logger.error(`Reset password error: ${error}`);
       res
         .status(500)
         .json(DataResponse.error("Internal server error", error.message));
