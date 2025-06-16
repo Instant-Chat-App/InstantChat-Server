@@ -47,6 +47,16 @@ export default function setupSocket(
                 });
 
                 //WORK IN PROGRESS
+                socket.on("joinRoom", (room) => {
+                    socket.join(room);
+                    logger.info(`Client ${socket.id} joined room: ${room}`);
+                });
+
+                socket.on("sendMessage", (data) => {
+                    const { room, message } = data;
+                    io.to(room).emit("message", message);
+                    logger.info(`Message sent to room ${room}: ${message}`);
+                });
             });
         })
         .catch((error) => {

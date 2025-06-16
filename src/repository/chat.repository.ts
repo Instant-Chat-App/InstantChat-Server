@@ -39,12 +39,18 @@ export default class ChatRepository extends BaseRepository<Chat> {
                 'messageStatus',
                 'messageStatus.messageId = message.messageId AND messageStatus.memberId = :userId', { userId }
             )
+            .leftJoin(
+                User,
+                'user',
+                'user.user_id = message.sender_id'
+            )
             .select([])
             .addSelect('chat.chat_id', 'chatId')
             .addSelect('chat.chat_name', 'chatName')
             .addSelect('chat.type', 'chatType')
             .addSelect('chat.cover_image', 'coverImage')
             .addSelect('message.message_id', 'messageId')
+            .addSelect('user.full_name', 'senderName')
             .addSelect('message.content', 'messageContent')
             .addSelect('message.created_at', 'messageCreatedAt')
             .addSelect('message.sender_id', 'messageSenderId')

@@ -2,6 +2,7 @@ import { Router } from "express";
 import ChatController from "../controllers/chat.controller";
 import { DataResponse } from "../dtos/responses/DataResponse";
 import { uploadChatCover } from "../middlewares/upload.middleware";
+import multer from "multer";
 
 const chatRouter = Router();
 const chatController = new ChatController();
@@ -61,7 +62,13 @@ chatRouter.patch("/chat/:chatId/name", (req, res) => {
 });
 
 // Change chat cover image
-chatRouter.patch("/chat/:chatId/cover", uploadChatCover, (req, res) => {
+chatRouter.patch("/chat/:chatId/cover", (req, res, next) => {
+    uploadChatCover(req, res, err => {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json(DataResponse.badRequest("File too large, max 10MB", err.message));
+        }
+    })
+}, (req, res) => {
     chatController.changeChatCoverImage(req, res);
 });
 
