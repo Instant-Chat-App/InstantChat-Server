@@ -65,3 +65,24 @@ export const changePasswordSchema = z
     message: "Confirm password must match new password",
     path: ["confirmPassword"],
   });
+
+export const forgotPasswordSchema = z.object({
+  phone: z
+    .string()
+    .regex(/^0\d{9}$/, "Phone number invalid")
+    .min(1, "Phone number is required"),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    phone: z.string().regex(/^0\d{9}$/, "Phone number invalid"),
+    otp: z.string().length(6, "OTP must be 6 digits"),
+    newPassword: z
+      .string()
+      .min(8, "New password must be at least 8 characters"),
+    confirmPassword: z.string().min(1, "Confirm password is required"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
