@@ -7,8 +7,7 @@ declare global {
     interface Request {
       user?: {
         accountId: number;
-        phoneNumber: string;
-        role?: string;
+        phone: string;
       };
     }
   }
@@ -47,7 +46,7 @@ export const authMiddleware = async (
 
     req.user = {
       accountId: payload.accountId,
-      phoneNumber: payload.phoneNumber,
+      phone: payload.phone,
     };
 
     next();
