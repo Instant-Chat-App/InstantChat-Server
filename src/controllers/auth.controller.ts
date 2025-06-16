@@ -56,7 +56,7 @@ export default class AuthController {
     try {
       const { refreshToken } = req.body;
 
-      const tokens = this.authService.refreshToken(refreshToken);
+      const tokens = await this.authService.refreshToken(refreshToken);
       if (tokens instanceof DataResponse) {
         return res.status(tokens.code).json(tokens);
       }
@@ -78,7 +78,7 @@ export default class AuthController {
     try {
       const { refreshToken } = req.body;
 
-      const result = this.authService.logout(refreshToken);
+      const result = await this.authService.logout(refreshToken);
 
       if (result instanceof DataResponse) {
         return res.status(result.code).json(result);
