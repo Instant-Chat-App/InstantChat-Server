@@ -1,7 +1,6 @@
 import multer from "multer";
 import { storage } from "../config/cloudinary/cloudinary-storage";
 
-
 export const uploadChatCover = multer({ 
     storage,
     limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit

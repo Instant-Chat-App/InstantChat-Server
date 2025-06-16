@@ -4,13 +4,17 @@ import { AppDataSource } from "../config/data-source";
 import { Account } from "../entities/account.entity";
 import { getEnv } from "../utils/get-env.service";
 import { User } from "../entities/user.entity";
-import { TokenPair, TokenPayload } from "../dtos/token.dto";
+import { TokenPair, TokenPayload } from "../dtos/TokenDto";
 import { redisService } from "./redis.service";
-import { LoginRequest } from "../dtos/requests/login-request.dto";
-import { AuthResponse } from "../dtos/responses/auth-response.dto";
+import { LoginRequest } from "../dtos/requests/LoginRequest";
+import { AuthResponse } from "../dtos/responses/AuthResponse";
 import { logger } from "../utils/logger";
-import { RegisterRequest } from "../dtos/requests/register-request.dto";
+import { RegisterRequest } from "../dtos/requests/RegisterRequest";
 import { DataResponse } from "../dtos/responses/DataResponse";
+import { UpdateProfileRequest } from "../dtos/requests/LoginProfileRequest";
+import { ChangePasswordRequest } from "../dtos/requests/ChangePasswordRequest";
+import cloudinary from "../config/cloudinary/cloudinary";
+import { ProfileResponse } from "../dtos/responses/UserProfileResponse";
 
 export class AuthService {
   private readonly accountRepository = AppDataSource.getRepository(Account);
@@ -169,7 +173,9 @@ export class AuthService {
     }
   }
 
-  async getProfile(accountId: number): Promise<any | DataResponse<null>> {
+  async getProfile(
+    accountId: number
+  ): Promise<ProfileResponse | DataResponse<null>> {
     const account = await this.accountRepository.findOne({
       where: { accountId: accountId },
       relations: { user: true },
@@ -183,26 +189,150 @@ export class AuthService {
       return DataResponse.notFound("User not found");
     }
 
-    return {
-      id: account.accountId,
-      phone: account.phone || "",
-      user: {
-        fullName: account.user.fullName || "",
-        email: account.user.email || "",
-        avatar: account.user.avatar || "",
-        dob: account.user.dob || new Date(),
-        gender: String(account.user.gender || ""),
-        bio: account.user.bio || "",
-      },
-    };
+    return this.mapToProfileResponse(account);
   }
 
   async logout(token: string): Promise<any> {
     try {
-      return await redisService.deleteRefreshToken(token);
+      if (!token) {
+        return DataResponse.badRequest("Refresh token is required");
+      }
+      const deleted = await redisService.deleteRefreshToken(token);
+      if (!deleted) {
+        return DataResponse.notFound(
+          "Refresh token not found or already expired"
+        );
+      }
+      return true;
     } catch (error) {
       logger.error(`Error during logout: ${error}`);
       return DataResponse.badRequest("Error to revoke refresh token");
+    }
+  }
+
+  async updateProfile(
+    accountId: number,
+    request: UpdateProfileRequest
+  ): Promise<ProfileResponse | DataResponse<null>> {
+    try {
+      // Find the user
+      const account = await this.accountRepository.findOne({
+        where: { accountId },
+        relations: { user: true },
+      });
+
+      if (!account) {
+        return DataResponse.notFound("Account not found");
+      }
+
+      if (!account.user) {
+        return DataResponse.notFound("User profile not found");
+      }
+
+      // Update user fields
+      if (request.fullName !== undefined)
+        account.user.fullName = request.fullName;
+      if (request.email !== undefined) account.user.email = request.email;
+      if (request.dob !== undefined) {
+        account.user.dob =
+          request.dob instanceof Date ? request.dob : new Date(request.dob);
+      }
+      if (request.gender !== undefined) account.user.gender = request.gender;
+      if (request.bio !== undefined) account.user.bio = request.bio;
+
+      // Save updated user
+      await this.userRepository.save(account.user);
+
+      // Return updated profile
+      return this.mapToProfileResponse(account);
+    } catch (error) {
+      logger.error(`Error updating profile: ${error}`);
+      throw new Error("Profile update failed");
+    }
+  }
+
+  async changePassword(
+    accountId: number,
+    request: ChangePasswordRequest
+  ): Promise<boolean | DataResponse<null>> {
+    try {
+      if (request.newPassword !== request.confirmPassword) {
+        return DataResponse.badRequest("New passwords don't match");
+      }
+
+      const account = await this.accountRepository.findOne({
+        where: { accountId },
+      });
+
+      if (!account) {
+        return DataResponse.notFound("Account not found");
+      }
+
+      const isValidPassword = await bcrypt.compare(
+        request.currentPassword,
+        account.password!
+      );
+
+      if (!isValidPassword) {
+        return DataResponse.badRequest("Current password is incorrect");
+      }
+
+      const newPasswordHash = await bcrypt.hash(request.newPassword, 10);
+
+      account.password = newPasswordHash;
+      await this.accountRepository.save(account);
+
+      return true;
+    } catch (error) {
+      logger.error(`Error changing password: ${error}`);
+      throw new Error("Password change failed");
+    }
+  }
+
+  async updateAvatar(
+    accountId: number,
+    avatarUrl: string
+  ): Promise<ProfileResponse | DataResponse<null>> {
+    try {
+      const account = await this.accountRepository.findOne({
+        where: { accountId },
+        relations: { user: true },
+      });
+
+      if (!account) {
+        return DataResponse.notFound("Account not found");
+      }
+
+      if (!account.user) {
+        return DataResponse.notFound("User profile not found");
+      }
+
+      // Delete old avatar
+      if (account.user.avatar && account.user.avatar.includes("cloudinary")) {
+        try {
+          // Extract public_id from the Cloudinary URL
+          // This is a simplified approach - you may need to adapt based on your URL structure
+          const publicId = account.user.avatar.split("/").pop()?.split(".")[0];
+          if (publicId) {
+            await cloudinary.uploader.destroy(publicId);
+            logger.info(`Deleted old avatar with ID: ${publicId}`);
+          }
+        } catch (cloudinaryError) {
+          logger.warn(`Failed to delete old avatar: ${cloudinaryError}`);
+        }
+      }
+
+      // Update avatar URL
+      account.user.avatar = avatarUrl;
+
+      // Save updated user
+      await this.userRepository.save(account.user);
+
+      // Return updated profile
+      return this.mapToProfileResponse(account);
+    } catch (error) {
+      logger.error(`Error updating avatar: ${error}`);
+      throw new Error("Avatar update failed");
     }
   }
 
@@ -224,5 +354,18 @@ export class AuthService {
       logger.error(`Error verifying access token: ${error}`);
       return null;
     }
+  }
+
+  private mapToProfileResponse(account: Account): ProfileResponse {
+    return {
+      id: account.accountId,
+      phone: account.phone || "",
+      fullName: account.user.fullName || "",
+      email: account.user.email || null,
+      avatar: account.user.avatar || null,
+      dob: account.user.dob || null,
+      gender: account.user.gender || null,
+      bio: account.user.bio || null,
+    };
   }
 }
