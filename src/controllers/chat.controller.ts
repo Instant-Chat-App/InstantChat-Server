@@ -21,7 +21,8 @@ export default class ChatController {
 
     public async getUserChats(req: Request, res: Response) {
         try {
-            const userId = this.validateId(req.params.userId, 'userId');
+            const userId = req.user!.accountId;
+            logger.info(`Fetching chats for userId: ${userId}`);
             if (userId === null) {
                 return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
             }
@@ -34,7 +35,7 @@ export default class ChatController {
 
     public async getCurrentMember(req: Request, res: Response) {
         try {
-            const userId = this.validateId(req.params.userId, 'userId');
+            const userId = req.user!.accountId;
             const chatId = this.validateId(req.params.chatId, 'chatId');
 
             if (userId === null) {
@@ -73,7 +74,7 @@ export default class ChatController {
 
     public async createPrivateChat(req: Request, res: Response) {
         try {
-            const userId = this.validateId(req.body.userId, 'userId');
+            const userId = req.user!.accountId;
             const otherUserId = this.validateId(req.body.otherUserId, 'otherUserId');
             if (userId === null) {
                 return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
@@ -91,7 +92,7 @@ export default class ChatController {
 
     public async createGroupChat(req: Request, res: Response) {
         try {
-            const userId = this.validateId(req.body.userId, 'userId');
+            const userId = req.user!.accountId;
             if (userId === null) {
                 return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
             }
@@ -119,7 +120,7 @@ export default class ChatController {
 
     public async createChannel(req: Request, res: Response) {
         try {
-            const userId = this.validateId(req.body.userId, 'userId');
+            const userId = req.user!.accountId;
             if (userId === null) {
                 return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
             }
@@ -147,9 +148,9 @@ export default class ChatController {
 
     public async addUserToChat(req: Request, res: Response) {
         try {
-            const ownerId = this.validateId(req.body.ownerId, 'ownerId');
+            const ownerId = req.user!.accountId;
             const chatId = this.validateId(req.params.chatId, 'chatId');
-            const userId = this.validateId(req.body.userId, 'userId');
+            const members : number[] = req.body.members;
 
             if (ownerId === null) {
                 return res.status(400).json(DataResponse.error("Invalid ownerId", "ownerId must be a valid number"));
@@ -157,11 +158,11 @@ export default class ChatController {
             if (chatId === null) {
                 return res.status(400).json(DataResponse.error("Invalid chatId", "chatId must be a valid number"));
             }
-            if (userId === null) {
-                return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
+            if (!Array.isArray(members) || members.length === 0) {
+                return res.status(400).json(DataResponse.error("Invalid members", "members must be a non-empty array of user IDs"));
             }
 
-            await this.chatService.addUserToChat(ownerId, chatId, userId);
+            await this.chatService.addUserToChat(ownerId, chatId, members);
             res.json(DataResponse.success(null, "User added to chat successfully"));
         } catch (error: any) {
             res.status(500).json(DataResponse.error("Failed to add user to chat", error.message));
@@ -170,9 +171,9 @@ export default class ChatController {
 
     public async kickUserFromChat(req: Request, res: Response) {
         try {
-            const ownerId = this.validateId(req.body.ownerId, 'ownerId');
+            const ownerId = req.user!.accountId;
             const chatId = this.validateId(req.params.chatId, 'chatId');
-            const userId = this.validateId(req.params.userId, 'userId');
+            const member = req.body.member;
 
             if (ownerId === null) {
                 return res.status(400).json(DataResponse.error("Invalid ownerId", "ownerId must be a valid number"));
@@ -180,11 +181,11 @@ export default class ChatController {
             if (chatId === null) {
                 return res.status(400).json(DataResponse.error("Invalid chatId", "chatId must be a valid number"));
             }
-            if (userId === null) {
-                return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
+            if (!member || typeof member !== 'number') {
+                return res.status(400).json(DataResponse.error("Invalid member", "member must be a valid user ID"));
             }
 
-            await this.chatService.kickUserFromChat(ownerId, chatId, userId);
+            await this.chatService.kickUserFromChat(ownerId, chatId, member);
             res.json(DataResponse.success(null, "User kicked from chat successfully"));
         } catch (error: any) {
             res.status(500).json(DataResponse.error("Failed to kick user from chat", error.message));
@@ -231,7 +232,7 @@ export default class ChatController {
 
     public async changeChatName(req: Request, res: Response) {
         try {
-            const userId = this.validateId(req.body.userId, 'userId');
+            const userId = req.user!.accountId;
             const chatId = this.validateId(req.params.chatId, 'chatId');
 
             if (userId === null) {
@@ -253,7 +254,7 @@ export default class ChatController {
 
     public async changeChatCoverImage(req: Request, res: Response) {
         try {
-            const userId = 1;
+            const userId = req.user!.accountId;
             const chatId = this.validateId(req.params.chatId, 'chatId');
             const coverImage = req.file?.path;
             logger.info(coverImage);
@@ -277,12 +278,13 @@ export default class ChatController {
 
     public async getChatMembers(req: Request, res: Response) {
         try {
+            const userId = req.user!.accountId;
             const chatId = this.validateId(req.params.chatId, 'chatId');
             if (chatId === null) {
                 return res.status(400).json(DataResponse.error("Invalid chatId", "chatId must be a valid number"));
             }
 
-            const members = await this.chatService.getChatMembers(chatId);
+            const members = await this.chatService.getChatMembers(userId, chatId);
             res.json(DataResponse.success(members, "Chat members retrieved successfully"));
         } catch (error: any) {
             res.status(500).json(DataResponse.error("Failed to get chat members", error.message));
@@ -291,7 +293,7 @@ export default class ChatController {
 
     public async findChats(req: Request, res: Response) {
         try {
-            const userId = this.validateId(req.params.userId, 'userId');
+            const userId = req.user!.accountId;
             if (userId === null) {
                 return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
             }
@@ -300,7 +302,7 @@ export default class ChatController {
             const result = await this.chatService.findChats(userId, searchTerm);
             res.json(DataResponse.success(result, "Chats found successfully"));
         } catch (error: any) {
-            res.status(500).json(DataResponse.error("Failed to find chats", error.message));
+            res.status(400).json(DataResponse.badRequest("Failed to find chats", error.message));
         }
     }
 }

@@ -225,8 +225,7 @@ export default class ChatRepository extends BaseRepository<Chat> {
         const newMember = this.manager.create(ChatMember, {
             chatId: chatId,
             memberId: userId,
-            isOwner: false,
-            joinedAt: new Date()
+            isOwner: false
         });
         return await this.manager.save(ChatMember, newMember);
     }
