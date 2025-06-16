@@ -11,7 +11,6 @@ import { AuthResponse } from "../dtos/responses/auth-response.dto";
 import { logger } from "../utils/logger";
 import { RegisterRequest } from "../dtos/requests/register-request.dto";
 import { DataResponse } from "../dtos/responses/DataResponse";
-import { ProfileResponse } from "../dtos/responses/profile.dto";
 
 export class AuthService {
   private readonly accountRepository = AppDataSource.getRepository(Account);
@@ -37,13 +36,23 @@ export class AuthService {
     accountId: number,
     phone: string
   ): Promise<TokenPair> {
-    const payload: TokenPayload = { accountId, phone };
+    const accessPayload: TokenPayload = {
+      accountId,
+      phone,
+      tokenType: "access",
+    };
 
-    const accessToken = jwt.sign(payload, this.ACCESS_TOKEN_SECRET, {
+    const refreshPayload: TokenPayload = {
+      accountId,
+      phone,
+      tokenType: "refresh",
+    };
+
+    const accessToken = jwt.sign(accessPayload, this.ACCESS_TOKEN_SECRET, {
       expiresIn: "15m",
     });
 
-    const refreshToken = jwt.sign(payload, this.REFRESH_TOKEN_SECRET, {
+    const refreshToken = jwt.sign(refreshPayload, this.REFRESH_TOKEN_SECRET, {
       expiresIn: "7d",
     });
 
@@ -93,7 +102,9 @@ export class AuthService {
     }
   }
 
-  async register(request: RegisterRequest): Promise<AuthResponse | DataResponse<null>> {
+  async register(
+    request: RegisterRequest
+  ): Promise<AuthResponse | DataResponse<null>> {
     try {
       const existingAccount = await this.accountRepository.findOne({
         where: { phone: request.phone },
@@ -158,7 +169,7 @@ export class AuthService {
     }
   }
 
-  async getProfile(accountId: number): Promise<ProfileResponse| DataResponse<null>> {
+  async getProfile(accountId: number): Promise<any | DataResponse<null>> {
     const account = await this.accountRepository.findOne({
       where: { accountId: accountId },
       relations: { user: true },
@@ -167,11 +178,11 @@ export class AuthService {
     if (!account) {
       return DataResponse.notFound("Account not found");
     }
-    
+
     if (!account.user) {
       return DataResponse.notFound("User not found");
     }
-    
+
     return {
       id: account.accountId,
       phone: account.phone || "",
@@ -181,23 +192,34 @@ export class AuthService {
         avatar: account.user.avatar || "",
         dob: account.user.dob || new Date(),
         gender: String(account.user.gender || ""),
-        bio: account.user.bio || ""
-      }
+        bio: account.user.bio || "",
+      },
     };
   }
 
-  async logout(token: string): Promise<boolean> {
+  async logout(token: string): Promise<any> {
     try {
       return await redisService.deleteRefreshToken(token);
     } catch (error) {
       logger.error(`Error during logout: ${error}`);
-      return false;
+      return DataResponse.badRequest("Error to revoke refresh token");
     }
   }
 
   verifyAccessToken(token: string): TokenPayload | null {
     try {
-      return jwt.verify(token, this.ACCESS_TOKEN_SECRET) as TokenPayload;
+      const payload = jwt.verify(
+        token,
+        this.ACCESS_TOKEN_SECRET
+      ) as TokenPayload;
+
+      // Verify it's actually an access token
+      if (payload.tokenType !== "access") {
+        logger.warn("Attempt to use a non-access token for authentication");
+        return null;
+      }
+
+      return payload;
     } catch (error) {
       logger.error(`Error verifying access token: ${error}`);
       return null;
