@@ -6,6 +6,7 @@ import { logger } from "../utils/logger";
 import { MessageStatus } from "../entities/message-status.entity";
 import { ChatType } from "../entities/enum";
 import CreateGroupRequest from "../dtos/requests/CreateGroupRequest";
+import { User } from "../entities/user.entity";
 
 
 export default class ChatRepository extends BaseRepository<Chat> {
@@ -61,8 +62,10 @@ export default class ChatRepository extends BaseRepository<Chat> {
         return await this.manager
             .createQueryBuilder(Chat, 'chat')
             .innerJoin(ChatMember, 'chatMember', 'chatMember.chat_id = chat.chat_id')
-            .where('chat.type = :type', { type: 'private' })
+            .where('chat.type = :type', { type: ChatType.PRIVATE })
             .andWhere('chatMember.member_id IN (:...memberIds)', { memberIds: [userId, otherUserId] })
+            .groupBy('chat.chat_id')
+            .having('COUNT(DISTINCT chatMember.member_id) = 2')
             .getOne();
     }
 
@@ -104,46 +107,31 @@ export default class ChatRepository extends BaseRepository<Chat> {
         userId: number,
         otherUserId: number
     ): Promise<Chat | null> {
-       
-        const existingChat = await this.manager
-            .createQueryBuilder(Chat, 'chat')
-            .innerJoin(ChatMember, 'chatMember', 'chatMember.chat_id = chat.chat_id')
-            .where('chat.type = :type', { type: 'private' })
-            .andWhere('chatMember.member_id IN (:...memberIds)', { memberIds: [userId, otherUserId] })
-            .getOne();
+        return await this.manager.transaction(async transactionalEntityManager => {
+            const chat = new Chat();
+            chat.type = ChatType.PRIVATE;
+            chat.chatName = undefined;
+            chat.coverImage = undefined;
 
-        logger.info(`Searching for existing private chat between ${userId} and ${otherUserId}`);
+            const savedChat = await transactionalEntityManager.save(chat);
 
-
-        if (existingChat) {
-            logger.info(`Found existing private chat between ${userId} and ${otherUserId}`);
-            return existingChat;
-        }
-
-        const chat = new Chat();
-        chat.type = ChatType.PRIVATE;
-        chat.chatName = undefined;
-        chat.coverImage = undefined;
-
-        const savedChat = await this.manager.save(chat);
-
-        const chatMembers = [
-            this.manager.create(ChatMember, { 
-                chatId: savedChat.chatId,
-                memberId: userId,
-                isOwner: false,
-                joinedAt: new Date()
-            }),
-            this.manager.create(ChatMember, { 
-                chatId: savedChat.chatId,
-                memberId: otherUserId,
-                isOwner: false,
-                joinedAt: new Date()
-            })
-        ];
-
-        await this.manager.save(ChatMember, chatMembers);
-        return savedChat;
+            const chatMembers = [
+                transactionalEntityManager.create(ChatMember, {
+                    chatId: savedChat.chatId,
+                    memberId: userId,
+                    isOwner: false,
+                    joinedAt: new Date()
+                }),
+                transactionalEntityManager.create(ChatMember, {
+                    chatId: savedChat.chatId,
+                    memberId: otherUserId,
+                    isOwner: false,
+                    joinedAt: new Date()
+                })
+            ];
+            await transactionalEntityManager.save(ChatMember, chatMembers);
+            return savedChat;
+        });
     }
 
     // Create group chat with multiple members
@@ -157,7 +145,7 @@ export default class ChatRepository extends BaseRepository<Chat> {
 
         const savedChat = await this.manager.save(chat);
 
-        logger.info(`Creating group chat with ID ${savedChat.chatId} and name ${request.name}`);
+        //Create owner chat member
         const ownerMember = this.manager.create(ChatMember, {
             chatId: savedChat.chatId,
             memberId: userId,
@@ -165,6 +153,8 @@ export default class ChatRepository extends BaseRepository<Chat> {
             joinedAt: new Date()
         });
         await this.manager.save(ownerMember);
+
+        // Create other members
         for (const memberId of request.members) {
             const chatMember = this.manager.create(ChatMember, {
                 chatId: savedChat.chatId,
@@ -189,7 +179,6 @@ export default class ChatRepository extends BaseRepository<Chat> {
 
         const savedChat = await this.manager.save(chat);
 
-        logger.info(`Creating channel with ID ${savedChat.chatId} and name ${request.name}`);
         const ownerMember = this.manager.create(ChatMember, {
             chatId: savedChat.chatId,
             memberId: userId,
@@ -210,5 +199,96 @@ export default class ChatRepository extends BaseRepository<Chat> {
         return savedChat;
     }
 
+    async checkIfUserAlreadyInChat(
+        userId: number,
+        chatId: number
+    ): Promise<boolean> {
+        const chatMember = await this.manager
+            .createQueryBuilder(ChatMember, 'chatMember')
+            .where('chatMember.member_id = :userId', { userId })
+            .andWhere('chatMember.chat_id = :chatId', { chatId })
+            .getOne();
 
+        return !!chatMember;
+    }
+
+    async addUserToChat(
+        userId: number,
+        chatId: number
+    ): Promise<ChatMember | null> {
+        const newMember = this.manager.create(ChatMember, {
+            chatId: chatId,
+            memberId: userId,
+            isOwner: false,
+            joinedAt: new Date()
+        });
+        return await this.manager.save(ChatMember, newMember);
+    }
+
+    async kickUserFromChat(
+        ownerId: number,
+        userId: number,
+        chatId: number
+    ): Promise<void> {
+        await this.manager.delete(ChatMember, { chatId: chatId, memberId: userId });
+    }
+
+    async leaveChat(
+        userId: number,
+        chatId: number
+    ): Promise<void> {
+        await this.manager.delete(ChatMember, { chatId: chatId, memberId: userId });
+    }
+
+    async deleteChat(
+        chatId: number
+    ): Promise<void> {
+        await this.manager.delete(ChatMember, { chatId: chatId });
+        await this.manager.delete(Message, { chatId: chatId });
+        await this.manager.delete(MessageStatus, { chatId: chatId });
+        await this.manager.delete(Chat, { chatId: chatId });
+    }
+
+    async changeChatName(
+        chatId: number,
+        newName: string
+    ): Promise<Chat | null> {
+        const chat = await this.getChatById(chatId);
+        chat!.chatName = newName;
+        return await this.manager.save(chat);
+    }
+
+    async changeChatCoverImage(
+        chatId: number,
+        newCoverImage: string
+    ): Promise<Chat | null> {
+        const chat = await this.getChatById(chatId);
+        chat!.coverImage = newCoverImage;
+        return await this.manager.save(chat);
+    }
+
+    async getChatMembers(
+        chatId: number
+    ): Promise<User[]> {
+        const users = await this.manager
+            .createQueryBuilder(User, "user")
+            .innerJoin(ChatMember, "cm", "cm.memberId = user.userId")
+            .where("cm.chatId = :chatId", { chatId })
+            .getMany();
+
+        return users;
+    }
+
+    async findChats(
+        userId: number,
+        searchTerm: string
+    ) {
+        return await this.manager
+            .createQueryBuilder(Chat, 'chat')
+            .innerJoin(ChatMember, 'chatMember', 'chatMember.chat_id = chat.chat_id AND chatMember.member_id = :userId', { userId })
+            .innerJoin(User, 'user', 'user.user_id = chatMember.member_id')
+            .where('chat.chat_name LIKE :searchTerm', { searchTerm: `%${searchTerm}%` })
+            .orWhere('user.full_name LIKE :searchTerm', { searchTerm: `%${searchTerm}%` })
+            .getMany();
+    }
 }

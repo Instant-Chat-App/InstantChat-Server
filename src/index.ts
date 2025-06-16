@@ -15,6 +15,7 @@ async function initializeApplication() {
   const app = express();
   const server = createServer(app);
 
+  app.use(express.json());
   setupSocket(server);
 
   const port = getEnv("PORT", "8080");
