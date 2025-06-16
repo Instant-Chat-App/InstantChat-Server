@@ -5,7 +5,7 @@ export interface RegisterRequest {
     password: string;
     fullName: string;
     email: string;
-    avatar: string; // xu ly anh sau
+    avatar: string;
     dob: Date;
     gender: Gender;
     bio: string;
