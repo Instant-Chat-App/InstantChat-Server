@@ -15,6 +15,9 @@ import { UpdateProfileRequest } from "../dtos/requests/LoginProfileRequest";
 import { ChangePasswordRequest } from "../dtos/requests/ChangePasswordRequest";
 import cloudinary from "../config/cloudinary/cloudinary";
 import { ProfileResponse } from "../dtos/responses/UserProfileResponse";
+import { smsService } from "./sms.service";
+import { ForgotPasswordRequest } from "../dtos/requests/ForgotPasswordRequest";
+import { ResetPasswordRequest } from "../dtos/requests/ResetPasswordRequest";
 
 export class AuthService {
   private readonly accountRepository = AppDataSource.getRepository(Account);
@@ -336,6 +339,71 @@ export class AuthService {
     }
   }
 
+  async forgotPassword(
+    req: ForgotPasswordRequest
+  ): Promise<boolean | DataResponse<null>> {
+    const phone = req.phone;
+    try {
+      const account = await this.accountRepository.findOne({
+        where: { phone },
+      });
+
+      if (!account) {
+        return DataResponse.notFound("No account found with this phone number");
+      }
+
+      const otp = this.generateOTP();
+
+      // Store OTP in Redis (valid for 5 minutes)
+      await redisService.storeOTP(phone, otp, 300);
+
+      // Send OTP via SMS
+      await smsService.sendOTP(phone, otp);
+
+      return true;
+    } catch (error) {
+      logger.error(`Error in forgot password: ${error}`);
+      throw new Error("Failed to process password reset request");
+    }
+  }
+
+  async resetPassword(
+    req: ResetPasswordRequest
+  ): Promise<boolean | DataResponse<null>> {
+    const { phone, otp, newPassword, confirmPassword } = req;
+    try {
+      const isValidOTP = await redisService.verifyOTP(phone, otp);
+
+      if (!isValidOTP) {
+        return DataResponse.badRequest("Invalid or expired OTP");
+      }
+
+      const account = await this.accountRepository.findOne({
+        where: { phone },
+      });
+
+      if (!account) {
+        return DataResponse.notFound("Account not found");
+      }
+
+      if (newPassword !== confirmPassword) {
+        return DataResponse.badRequest("Passwords do not match");
+      }
+
+      const passwordHash = await bcrypt.hash(newPassword, 10);
+
+      account.password = passwordHash;
+      await this.accountRepository.save(account);
+
+      await redisService.deleteOTP(phone);
+
+      return true;
+    } catch (error) {
+      logger.error(`Error in reset password: ${error}`);
+      throw new Error("Failed to reset password");
+    }
+  }
+
   verifyAccessToken(token: string): TokenPayload | null {
     try {
       const payload = jwt.verify(
@@ -343,7 +411,6 @@ export class AuthService {
         this.ACCESS_TOKEN_SECRET
       ) as TokenPayload;
 
-      // Verify it's actually an access token
       if (payload.tokenType !== "access") {
         logger.warn("Attempt to use a non-access token for authentication");
         return null;
@@ -367,5 +434,9 @@ export class AuthService {
       gender: account.user.gender || null,
       bio: account.user.bio || null,
     };
+  }
+
+  private generateOTP(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
   }
 }
