@@ -29,4 +29,8 @@ Thumbs.db
 *.sublime-workspace
 *.sublime-project
 
+#env
 .env
+
+#migration files
+src/resources/*.ts

@@ -1,4 +1,3 @@
-import { getRepository } from "typeorm";
 import { Chat } from "../entities/chat.entity";
 import { BaseRepository } from "./base.repository";
 import { Message } from "../entities/message.entity";

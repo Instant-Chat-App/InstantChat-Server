@@ -1,18 +1,17 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
   OneToOne,
-  OneToMany,
   ManyToMany,
   JoinTable,
+  PrimaryColumn,
 } from 'typeorm';
 import { Gender } from './enum';
 import { Account } from './account.entity';
 
 @Entity('users')
 export class User {
-  @PrimaryGeneratedColumn({ name: 'user_id', type: 'int' })
+  @PrimaryColumn({ name: 'user_id', type: 'int' })
   userId!: number;
 
   @Column({ type: 'varchar', name: 'full_name', nullable: true })
