@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { AuthService } from "../services/auth.service";
 import { logger } from "../utils/logger";
+import { HttpStatusCode } from "../utils/http-status-code";
+import { DataResponse } from "../dtos/responses/DataResponse";
 
 declare global {
   namespace Express {
@@ -23,10 +25,9 @@ export const authMiddleware = async (
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      res.status(401).json({
-        success: false,
-        message: "Authorization header is missing or invalid",
-      });
+      res
+        .status(HttpStatusCode.UNAUTHORIZED)
+        .json(DataResponse.unauthorized("Authentication token required"));
       return;
     }
 
@@ -37,10 +38,9 @@ export const authMiddleware = async (
     const payload = authService.verifyAccessToken(token);
 
     if (!payload) {
-      res.status(401).json({
-        success: false,
-        message: "Invalid or expired token",
-      });
+      res
+        .status(HttpStatusCode.UNAUTHORIZED)
+        .json(DataResponse.unauthorized("Invalid or expired token"));
       return;
     }
 
@@ -52,9 +52,8 @@ export const authMiddleware = async (
     next();
   } catch (error) {
     logger.error(`Auth middleware error: ${error}`);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
+    res
+      .status(HttpStatusCode.UNAUTHORIZED)
+      .json(DataResponse.unauthorized("Authentication failed"));
   }
 };
