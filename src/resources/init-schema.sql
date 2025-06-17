@@ -68,7 +68,8 @@ CREATE TABLE "chats" (
   "chat_id" SERIAL PRIMARY KEY,
   "type" chat_type,
   "chat_name" VARCHAR,
-  "cover_image" VARCHAR
+  "cover_image" VARCHAR,
+  "description" TEXT
 );
 
 CREATE TABLE "chat_members" (

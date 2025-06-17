@@ -17,6 +17,9 @@ export class Chat {
   @Column({ type: 'varchar', name: 'cover_image', nullable: true })
   coverImage?: string;
 
+  @Column({ type: 'text', name: 'description', nullable: true })
+  description?: string;
+
   @OneToMany(() => ChatMember, member => member.chat)
   members!: ChatMember[];
 
