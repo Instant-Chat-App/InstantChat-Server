@@ -8,6 +8,7 @@ export default async function socketAuthMiddleware(
 ) {
     const authService = new AuthService();
     const token = socket.handshake.auth.token;
+    logger.info(token)
     if (!token) {
         logger.error("Socket connection failed: No token provided");
         return next(new Error("Authentication error: No token provided"));

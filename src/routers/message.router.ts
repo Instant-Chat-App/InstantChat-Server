@@ -11,7 +11,7 @@ messageRouter.get("/:chatId", authMiddleware, async (req, res) => {
     messageController.getUserChatMessages(req, res);
 });
 
-messageRouter.post("", uploadMessageAttachment,authMiddleware, async (req, res) => {
+messageRouter.post("", uploadMessageAttachment, authMiddleware, async (req, res) => {
     messageController.sendMessage(req, res);
 });
 
