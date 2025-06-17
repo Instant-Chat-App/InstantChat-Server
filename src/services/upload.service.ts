@@ -7,23 +7,25 @@ export type UploadOptions = {
   folder?: string;
 };
 
-export const uploadFromBuffer = (
-  buffer: Buffer,
+export const uploadFromBase64 = async (
+  base64Data: string,
   filename?: string,
+  mimeType?: string,
   options?: UploadOptions
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
+    cloudinary.uploader.upload(
+      base64Data,
       {
         resource_type: options?.resource_type ?? "auto",
-        folder: options?.folder ?? "chat_app_uploads",
-        public_id: filename?.split(".")[0],
+        folder: options?.folder ?? "uploads",
+        public_id: filename,
+        mime_type: mimeType
       },
       (err, result) => {
         if (err) return reject(err);
         resolve(result?.secure_url || "");
       }
     );
-    Readable.from(buffer).pipe(stream);
   });
 };

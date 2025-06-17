@@ -4,6 +4,7 @@ import { MessageStatus } from "../entities/message-status.entity";
 import { Message } from "../entities/message.entity";
 import { logger } from "../utils/logger";
 import { BaseRepository } from "./base.repository";
+import { Attachment } from "../entities/attachment.entity";
 
 
 export default class MessageRepository extends BaseRepository<Message> {
@@ -27,7 +28,7 @@ export default class MessageRepository extends BaseRepository<Message> {
         return message;
     }
 
-    async saveAttachments(messageId: number, attachment: string, fileType: AttachType): Promise<void> {
+    async saveAttachments(messageId: number, attachments: string, fileType: AttachType): Promise<void> {
 
         await this.manager
             .createQueryBuilder()
@@ -35,7 +36,7 @@ export default class MessageRepository extends BaseRepository<Message> {
             .into('attachments')
             .values({
                 messageId,
-                url: attachment,
+                url: attachments,
                 type: fileType
             })
             .execute();
@@ -70,6 +71,7 @@ export default class MessageRepository extends BaseRepository<Message> {
             .leftJoinAndSelect('message.sender', 'u')
             .leftJoinAndSelect('message.attachments', 'a')
             .leftJoinAndSelect('message.reactions', 'r')
+            .leftJoinAndSelect('r.user', 'reactor')
             .leftJoinAndSelect('message.replyToMessage', 'rm')
             .leftJoinAndSelect('rm.sender', 'ru')
             .leftJoinAndSelect(
@@ -95,12 +97,11 @@ export default class MessageRepository extends BaseRepository<Message> {
     }
 
 
-    async sendMessage(senderId: number, chatId: number, content: string, attachments: string[], replyTo?: number): Promise<Message> {
+    async sendMessage(senderId: number, chatId: number, content: string, replyTo?: number): Promise<Message> {
         const message = this.manager.create(Message, {
             senderId,
             chatId,
             content,
-            attachments: attachments.map(url => ({ url })),
             ...(replyTo ? { replyTo: replyTo } : null)
         });
 

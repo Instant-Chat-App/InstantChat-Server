@@ -32,7 +32,7 @@ export default class MessageController {
         }
 
         return res.json(DataResponse.success(
-            await this.messageService.sendMessage(senderId, chatId, content, attachments),
+            await this.messageService.sendMessage(senderId, chatId, content),
             "Message sent successfully"
         ));
     }
