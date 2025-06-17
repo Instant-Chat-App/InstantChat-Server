@@ -57,67 +57,43 @@ export default class MessageRepository extends BaseRepository<Message> {
     }
 
     async getUserChatMessages(userId: number, chatId: number): Promise<Message[]> {
+        const ownerStatus = await this.manager
+            .createQueryBuilder()
+            .select('cm.is_owner', 'isOwner')
+            .from('chat_members', 'cm')
+            .where('cm.chat_id = :chatId', { chatId })
+            .andWhere('cm.member_id = :userId', { userId })
+            .getRawOne();
+
         const queryBuilder = this.manager
             .createQueryBuilder(Message, 'message')
-            .leftJoin('message.sender', 'u')
-            .leftJoin('message.attachments', 'a')
-            .leftJoin('message.reactions', 'r')
-            .leftJoin('message.replyToMessage', 'rm')
-            .leftJoin('rm.sender', 'ru')
-            .leftJoin(
+            .leftJoinAndSelect('message.sender', 'u')
+            .leftJoinAndSelect('message.attachments', 'a')
+            .leftJoinAndSelect('message.reactions', 'r')
+            .leftJoinAndSelect('message.replyToMessage', 'rm')
+            .leftJoinAndSelect('rm.sender', 'ru')
+            .leftJoinAndSelect(
                 'message.messageStatus',
                 'ms',
-                'ms.member_id = :userId', { userId }
+                'ms.member_id = :userId',
+                { userId }
             )
             .where('message.chatId = :chatId', { chatId })
-            .orderBy('message.createdAt', 'ASC')
-            .select([
-                // message fields
-                'message.messageId',
-                'message.chatId',
-                'message.senderId',
-                'message.content',
-                'message.createdAt',
-                'message.isEdited',
-                'message.isDeleted',
-                'message.replyTo',
+            .orderBy('message.createdAt', 'ASC');
 
-                // sender fields
-                'u.userId',
-                'u.fullName',
-                'u.avatar',
+        const messages = await queryBuilder.getMany();
+        
+        const result = messages.map(message => {
+            const plainMessage = {
+                ...message,
+                isOwner: ownerStatus?.isOwner || false
+            };
+            return plainMessage;
+        });
 
-                // attachments fields
-                'a.attachmentId',
-                'a.url',
-                'a.type',
-
-                // reactions fields
-                'r.messageId',
-                'r.userId',
-                'r.type',
-                'r.createdAt',
-
-                // replyToMessage fields
-                'rm.messageId',
-                'rm.content',
-
-                // replyToMessage sender fields
-                'ru.userId',
-                'ru.fullName',
-                'ru.avatar',
-
-                // messageStatus fields
-                'ms.status'
-            ]);
-
-        const results = await queryBuilder.getMany();
-        if (!results || results.length === 0) {
-            return [];
-        }
-        logger.info(`Found ${results.length} messages for user ${userId} in chat ${chatId}`);
-        return results;
+        return result;
     }
+
 
     async sendMessage(senderId: number, chatId: number, content: string, attachments: string[], replyTo?: number): Promise<Message> {
         const message = this.manager.create(Message, {
@@ -173,9 +149,10 @@ export default class MessageRepository extends BaseRepository<Message> {
         await this.manager
             .createQueryBuilder()
             .update('message_reactions')
-            .set({ type: reactionType,
-                createdAt: new Date().toISOString() 
-             })
+            .set({
+                type: reactionType,
+                createdAt: new Date().toISOString()
+            })
             .where('message_id = :messageId', { messageId })
             .andWhere('user_id = :userId', { userId })
             .execute();

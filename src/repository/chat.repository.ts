@@ -68,6 +68,7 @@ export default class ChatRepository extends BaseRepository<Chat> {
                 'chat.chat_id AS "chatId"',
                 'chat.type    AS "chatType"',
                 'chat.description AS "chatDescription"',
+                'cm.is_owner AS "isOwner"',
                 `CASE
                     WHEN chat.type = 'PRIVATE' AND partner.full_name IS NOT NULL
                     THEN partner.full_name

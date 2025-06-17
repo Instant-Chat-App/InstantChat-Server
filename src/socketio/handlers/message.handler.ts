@@ -21,21 +21,24 @@ interface MessageEvent {
 }
 
 export function handleMessageEvents(socket: Socket, io: Server) {
-    socket.on("joinChat", async (chatId: number) => {
+    socket.on("joinMultipleChats", async (chatIds: number[]) => {
         const user = socket.data.user;
         if (!user) {
             return socket.emit("joinError", { error: "UNAUTHORIZED" });
         }
 
-        const isMember = await messageService.checkMemberInChat(user.accountId, chatId);
-        if (!isMember) {
-            logger.warn(`User ${user.accountId} is not a member of chat ${chatId}`);
-            return socket.emit("joinError", { error: "You are not a member of this chat" });
+        for (const chatId of chatIds) {
+            const isMember = await messageService.checkMemberInChat(user.accountId, chatId);
+            if (!isMember) {
+                logger.warn(`User ${user.accountId} is not a member of chat ${chatId}`);
+                return socket.emit("joinError", { error: "You are not a member of this chat" });
+            }
         }
-
-        socket.join(`chat_${chatId}`);
-        logger.info(`Client ${socket.id} joined chat: ${chatId}`);
-        socket.emit("joinSuccess", { chatId });
+        for (const chatId of chatIds) {
+            socket.join(`chat_${chatId}`);
+            logger.info(`Client ${socket.id} joined chat: ${chatId}`);
+            socket.emit("joinSuccess", { chatId });
+        }
     });
 
     socket.on("sendMessage", async (message: MessageEvent) => {
@@ -50,7 +53,7 @@ export function handleMessageEvents(socket: Socket, io: Server) {
                 return socket.emit("messageError", { error: "You are not a member of this chat" });
             }
 
-            if (!message.content || (!message.attachments || message.attachments.length === 0)) {
+            if (!message.content && (!message.attachments || message.attachments.length === 0)) {
                 logger.warn("Message content and attachments are both empty");
                 return socket.emit("messageError", { error: "Message content cannot be empty" });
             }
