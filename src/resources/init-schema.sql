@@ -7,7 +7,7 @@ CREATE TYPE "chat_type" AS ENUM (
 CREATE TYPE "attach_type" AS ENUM (
   'IMAGE',
   'VIDEO',
-  'RAW',
+  'RAW'
 );
 
 CREATE TYPE "message_status_enum" AS ENUM (
