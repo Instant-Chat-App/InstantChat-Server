@@ -1,3 +1,4 @@
+import { send } from "process";
 import { Chat } from "../entities/chat.entity";
 import { AttachType, MessageStatusEnum, Reaction } from "../entities/enum";
 import { Message } from "../entities/message.entity";
@@ -74,9 +75,13 @@ export class MessageService {
         return message;
     }
 
-    async editMessage(messageId: number, content: string) {
+    async editMessage(userId: number, messageId: number, content: string) {
         const message = await this.messageRepository.getMessageById(messageId);
+        const senderId = message!.senderId;
 
+        if (senderId !== userId) {
+            throw new Error("Only the sender can edit the message");
+        }
         if (!message) {
             throw new Error("Message not found");
         }

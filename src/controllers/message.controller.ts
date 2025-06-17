@@ -46,7 +46,7 @@ export default class MessageController {
         }
 
         try {
-            const updatedMessage = await this.messageService.editMessage(messageId, content);
+            const updatedMessage = await this.messageService.editMessage(req.user!.accountId, messageId, content);
             res.json(DataResponse.success(updatedMessage, "Message edited successfully"));
         } catch (error: any) {
             res.status(500).json(DataResponse.error("Failed to edit message", error.message));

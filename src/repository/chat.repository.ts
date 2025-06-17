@@ -33,7 +33,7 @@ export default class ChatRepository extends BaseRepository<Chat> {
                 { userId }
             )
             // lấy ra các chat có tin nhắn mới nhất
-            .innerJoin(
+            .leftJoin(
                 Message,
                 'message',
                 `message.message_id = (${latestMsgSubquery.getQuery()})`
@@ -67,6 +67,7 @@ export default class ChatRepository extends BaseRepository<Chat> {
             .select([
                 'chat.chat_id AS "chatId"',
                 'chat.type    AS "chatType"',
+                'chat.description AS "chatDescription"',
                 `CASE
                     WHEN chat.type = 'PRIVATE' AND partner.full_name IS NOT NULL
                     THEN partner.full_name
@@ -147,7 +148,7 @@ export default class ChatRepository extends BaseRepository<Chat> {
             chat.type = ChatType.PRIVATE;
             chat.chatName = undefined;
             chat.coverImage = undefined;
-
+            chat.description = undefined;
             const savedChat = await transactionalEntityManager.save(chat);
 
             const chatMembers = [
@@ -177,6 +178,7 @@ export default class ChatRepository extends BaseRepository<Chat> {
         const chat = new Chat();
         chat.type = ChatType.GROUP;
         chat.chatName = request.name;
+        chat.description = request.description || '';
 
         const savedChat = await this.manager.save(chat);
 
@@ -211,6 +213,7 @@ export default class ChatRepository extends BaseRepository<Chat> {
         const chat = new Chat();
         chat.type = ChatType.CHANNEL;
         chat.chatName = request.name;
+        chat.description = request.description || '';
 
         const savedChat = await this.manager.save(chat);
 
