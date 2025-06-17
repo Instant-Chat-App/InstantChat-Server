@@ -83,7 +83,9 @@ export class AuthService {
       });
 
       if (!account) {
-        return DataResponse.badRequest("Invalid password attempt for phone number");
+        return DataResponse.badRequest(
+          "Invalid password attempt for phone number"
+        );
       }
 
       const isValidPassword = await bcrypt.compare(
@@ -111,7 +113,7 @@ export class AuthService {
 
   async register(
     request: RegisterRequest
-  ): Promise<AuthResponse | DataResponse<null>> {
+  ): Promise<ProfileResponse | DataResponse<null>> {
     try {
       const existingAccount = await this.accountRepository.findOne({
         where: { phone: request.phone },
@@ -134,20 +136,21 @@ export class AuthService {
       user.userId = savedAccount.accountId;
       user.fullName = request.fullName;
       user.email = request.email;
-      user.avatar = request.avatar;
-      user.dob =
-        request.dob instanceof Date ? request.dob : new Date(request.dob);
-      user.gender = request.gender;
-      user.bio = request.bio;
 
       await this.userRepository.save(user);
 
-      const response: AuthResponse = await this.generateTokens(
-        savedAccount.accountId,
-        savedAccount.phone!
-      );
+      const accountWithUser = await this.accountRepository.findOne({
+        where: { accountId: savedAccount.accountId },
+        relations: { user: true },
+      });
 
-      return response;
+      if (!accountWithUser) {
+        return DataResponse.badRequest(
+          "Failed to retrieve user profile after registration"
+        );
+      }
+
+      return this.mapToProfileResponse(accountWithUser);
     } catch (err) {
       logger.error(`Error during registration: ${err}`);
       throw new Error("Registration failed");
