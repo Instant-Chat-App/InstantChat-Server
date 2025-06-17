@@ -83,7 +83,7 @@ export class AuthService {
       });
 
       if (!account) {
-        return DataResponse.badRequest("Phone number not existed");
+        return DataResponse.badRequest("Invalid password attempt for phone number");
       }
 
       const isValidPassword = await bcrypt.compare(
