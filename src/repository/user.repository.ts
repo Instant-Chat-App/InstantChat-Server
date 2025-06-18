@@ -7,7 +7,7 @@ export default class UserRepository extends BaseRepository<User> {
     }
 
     async getUserById(currentUserId: number, targetUserId: number) {
-        return await this.manager
+        const raw = await this.manager
             .createQueryBuilder("users", "u")
             .leftJoin(
                 "contacts",
@@ -18,6 +18,21 @@ export default class UserRepository extends BaseRepository<User> {
             .addSelect("CASE WHEN c.contact_id IS NOT NULL THEN true ELSE false END", "isContact")
             .where("u.user_id = :targetUserId", { targetUserId })
             .getRawOne();
-    }
 
+        if (!raw) return null;
+
+        const user = {
+            userId: raw.u_user_id,
+            fullName: raw.u_full_name,
+            email: raw.u_email,
+            avatar: raw.u_avatar,
+            dob: raw.u_dob,
+            gender: raw.u_gender,
+            bio: raw.u_bio,
+            isContact: raw.isContact
+        };
+
+        return user;
+    }
 }
+

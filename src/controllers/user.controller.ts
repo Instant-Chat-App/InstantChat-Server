@@ -83,11 +83,13 @@ export default class UserController {
 
   async getUserById(req: Request, res: Response) {
     try {
-      const targetUserId = parseInt(req.params.userId, 10);
+      const targetUserId = req.params.userId ? parseInt(req.params.userId) : null;
 
-      if (isNaN(targetUserId)) {
-        return res.status(400).json(DataResponse.badRequest("Invalid user ID"));
+      if (!targetUserId || isNaN(targetUserId)) {
+        return res.status(400).json({ message: 'Invalid userId' });
       }
+
+
 
       const currentUser = req.user;
       if (!currentUser) {

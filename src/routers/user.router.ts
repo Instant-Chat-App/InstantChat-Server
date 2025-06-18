@@ -13,7 +13,7 @@ userRouter.get("/:userId", authMiddleware, (req, res) => {
   userController.getUserInfo(req, res);
 });
 
-userRouter.get("/find", authMiddleware, (req, res) => {
+userRouter.get("/find/:userId", authMiddleware, (req, res) => {
   userController.getUserById(req, res);
 });
 
