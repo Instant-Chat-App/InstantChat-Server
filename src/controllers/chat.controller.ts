@@ -98,12 +98,13 @@ export default class ChatController {
                 return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
             }
 
-            const rawMembers = JSON.parse(req.body.members);
-            const members = rawMembers;
+
+            const members = req.body.members;
 
             if (members.length < 1) {
                 return res.status(400).json(DataResponse.error("Invalid members", "at least two members are required to create a group chat"));
             }
+            logger.info(`Creating group chat for userId: ${members.length} with members: ${members}`);
 
             const cloudinaryFile = await uploadFromBase64(req.body.coverImage as string);
             const groupRequest: CreateGroupRequest = {
@@ -127,7 +128,7 @@ export default class ChatController {
                 return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
             }
 
-            const rawMembers = JSON.parse(req.body.members);
+            const rawMembers = req.body.members;
 
             if (rawMembers.length < 1) {
                 return res.status(400).json(DataResponse.error("Invalid members", "at least two members are required to create a group chat"));
