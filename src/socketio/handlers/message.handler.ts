@@ -1,10 +1,11 @@
 import { Socket, Server } from 'socket.io';
 import MessageController from '../../controllers/message.controller';
 import { logger } from '../../utils/logger';
-import { uploadFromBuffer } from '../../services/upload.service';
+import { uploadFromBase64 } from '../../services/upload.service';
 import { MessageService } from '../../services/message.service';
 import { Reaction } from '../../entities/enum';
 import { ChatService } from '../../services/chat.service';
+import { PaginationParams } from '../../utils/type';
 
 const messageService = new MessageService();
 const chatService = new ChatService();
@@ -13,11 +14,12 @@ interface MessageEvent {
     chatId: number;
     content: string;
     replyTo?: number;
-    attachments?: {
-        fileName: string;
-        mimeType: string;
-        buffer: ArrayBuffer;
-    }[];
+    attachments?: base64Data[];
+}
+export interface base64Data{
+    fileName: string;
+    mimeType: string;
+    base64Data: string;
 }
 
 export function handleMessageEvents(socket: Socket, io: Server) {
@@ -58,33 +60,11 @@ export function handleMessageEvents(socket: Socket, io: Server) {
                 return socket.emit("messageError", { error: "Message content cannot be empty" });
             }
 
-
-            const uploadedFiles: Partial<Express.Multer.File>[] = [];
-
-            if (message.attachments && message.attachments.length > 0) {
-                for (const attachment of message.attachments) {
-                    const buffer = Buffer.from(attachment.buffer);
-                    const fileName = `${Date.now()}_${attachment.fileName}`;
-                    
-                    const url = await uploadFromBuffer(buffer, fileName, {
-                        resource_type: "auto",
-                        folder: "uploads"
-                    });
-                    uploadedFiles.push({
-                        path: url,
-                        mimetype: attachment.mimeType,
-                        originalname: attachment.fileName,
-                        filename: fileName,
-                        size: buffer.length,
-                    });
-                }
-            }   
-
             await messageService.sendMessage(
                 user.accountId,
                 message.chatId,
                 message.content,
-                uploadedFiles as Express.Multer.File[],
+                message.attachments,
                 message.replyTo ? message.replyTo : undefined
             );
 
@@ -92,14 +72,13 @@ export function handleMessageEvents(socket: Socket, io: Server) {
             io.to(`chat_${message.chatId}`).emit("newMessage", {
                 chatId: message.chatId,
                 content: message.content,
-                attachments: uploadedFiles.map(file => ({
-                    fileName: file.originalname,
-                    mimeType: file.mimetype,
-                    url: file.path
-                })),
+                attachments: message.attachments,
                 senderId: user.accountId,
                 timestamp: new Date().toISOString(),
-                replyTo: message.replyTo
+                replyTo: message.replyTo,
+                isEdited: false,
+                isDeleted: false,
+
             });
             logger.info(`Message sent successfully from user ${user.accountId} in chat ${message.chatId}`);
         }catch (error) {
@@ -109,21 +88,21 @@ export function handleMessageEvents(socket: Socket, io: Server) {
         }
     });
 
-    socket.on("readMessages", async (chatId: number) => {
-        const user = socket.data.user;
-        if (!user) {
-            return socket.emit("readError", { error: "UNAUTHORIZED" });
-        }
+    // socket.on("readMessages", async (chatId: number, params: PaginationParams) => {
+    //     const user = socket.data.user;
+    //     if (!user) {
+    //         return socket.emit("readError", { error: "UNAUTHORIZED" });
+    //     }
 
-        try {
-            await messageService.getUserChatMessages(user.accountId, chatId);
-            logger.info(`User ${user.accountId} marked messages as read in chat ${chatId}`);
-            socket.emit("readSuccess", { chatId });
-        } catch (error) {
-            logger.error(`Error marking messages as read: ${error}`);
-            socket.emit("readError", { error: "Failed to mark messages as read" });
-        }
-    });
+    //     try {
+    //         await messageService.getUserChatMessages(user.accountId, chatId, params);
+    //         logger.info(`User ${user.accountId} marked messages as read in chat ${chatId}`);
+    //         socket.emit("readSuccess", { chatId });
+    //     } catch (error) {
+    //         logger.error(`Error marking messages as read: ${error}`);
+    //         socket.emit("readError", { error: "Failed to mark messages as read" });
+    //     }
+    // });
 
     socket.on("deleteMessage", async (chatId: number, messageId: number) => {
         const user = socket.data.user;
@@ -142,7 +121,7 @@ export function handleMessageEvents(socket: Socket, io: Server) {
             socket.emit("deleteError", { error: "Failed to delete message" });
         }
     });
-    socket.on("editMessage", async (chatId: number, messageId: number, content: string) => {
+    socket.on("editMessage", async ({chatId, messageId, content}) => {
         const user = socket.data.user;
         if (!user) {
             return socket.emit("editError", { error: "UNAUTHORIZED" });
@@ -151,8 +130,7 @@ export function handleMessageEvents(socket: Socket, io: Server) {
             await messageService.editMessage(user.accountId, messageId, content);
             logger.info(`User ${user.accountId} edited message ${messageId}`);
             socket.emit("editSuccess", { messageId, content });
-            // Optionally, you can emit an event to notify other users in the chat
-            io.to(`chat_${chatId}`).emit("messageEdited", { messageId, content });
+            io.to(`chat_${chatId}`).emit("messageEdited", { messageId});
         } catch (error) {
             logger.error(`Error editing message: ${error}`);
             socket.emit("editError", { error: "Failed to edit message" });
@@ -177,23 +155,6 @@ export function handleMessageEvents(socket: Socket, io: Server) {
         }
     });
 
-    socket.on("deleteReaction", async (chatId: number, messageId: number) => {
-        const user = socket.data.user;
-        if (!user) {
-            return socket.emit("deleteReactionError", { error: "UNAUTHORIZED" });
-        }
-
-        try {
-            await messageService.removeReaction(messageId, user.accountId);
-            logger.info(`User ${user.accountId} removed reaction from message ${messageId}`);
-            socket.emit("deleteReactionSuccess", { messageId });
-            // Optionally, you can emit an event to notify other users in the chat
-            io.to(`chat_${chatId}`).emit("reactionDeleted", { messageId, userId: user.accountId });
-        } catch (error) {
-            logger.error(`Error deleting reaction: ${error}`);
-            socket.emit("deleteReactionError", { error: "Failed to delete reaction" });
-        }
-    });
 
     socket.on("memberJoined", async (chatId: number, memberId: number[]) => {
         const user = socket.data.user;
@@ -247,16 +208,14 @@ export function handleMessageEvents(socket: Socket, io: Server) {
         }
     });
 
-    socket.on("changeGroupCover", async (chatId: number, coverImage: { fileName: string; mimeType: string; buffer: ArrayBuffer }) => {
+    socket.on("changeGroupCover", async (chatId: number, coverImage: { fileName: string; mimeType: string; base64Data: string }) => {
         const user = socket.data.user;
         if (!user) {
             return socket.emit("changeGroupCoverError", { error: "UNAUTHORIZED" });
         }
 
         try {
-            const buffer = Buffer.from(coverImage.buffer);
-            const fileName = `${Date.now()}_${coverImage.fileName}`;
-            const url = await uploadFromBuffer(buffer, fileName, {
+            const url = await uploadFromBase64(coverImage.base64Data, coverImage.fileName, coverImage.mimeType, {
                 resource_type: "auto",
                 folder: "uploads"
             });

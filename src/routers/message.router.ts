@@ -27,8 +27,6 @@ messageRouter.post("/react", authMiddleware, async (req, res) => {
     messageController.reactToMessage(req, res);
 });
 
-messageRouter.delete("/react/:messageId", authMiddleware, async (req, res) => {
-    messageController.deleteReaction(req, res);
-});
+
 
 export default messageRouter;
