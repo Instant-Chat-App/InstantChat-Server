@@ -15,9 +15,7 @@ export class UserService {
     try {
       // Không cho phép lấy thông tin của chính mình (nên dùng API profile)
       if (userId === currentUserId) {
-        return DataResponse.badRequest(
-          "Can't get your own profile"
-        );
+        return DataResponse.badRequest("Can't get your own profile");
       }
 
       // Tìm user theo ID
@@ -46,7 +44,7 @@ export class UserService {
 
       // Chuyển đổi thành UserResponse
       const userResponse: UserResponse = {
-        userId: user.userId,
+        id: user.userId,
         fullName: user.fullName,
         email: user.email,
         avatar: user.avatar,
@@ -84,7 +82,7 @@ export class UserService {
       // Map contacts thành UserResponse
       const userResponses: UserResponse[] = currentUser.contacts.map(
         (contact) => ({
-          userId: contact.userId,
+          id: contact.userId,
           fullName: contact.fullName,
           email: contact.email,
           avatar: contact.avatar,
@@ -106,13 +104,16 @@ export class UserService {
     currentUserId: number,
     targetUserId: number
   ): Promise<UserResponse | null> {
-    const user = await this.secondUserRepository.getUserById(currentUserId, targetUserId);
+    const user = await this.secondUserRepository.getUserById(
+      currentUserId,
+      targetUserId
+    );
     if (!user) {
       return null;
     }
 
     return {
-      userId: user.userId,
+      id: user.userId,
       fullName: user.fullName,
       email: user.email,
       avatar: user.avatar,
@@ -127,6 +128,23 @@ export class UserService {
     phone: string,
     currentUserId: number
   ): Promise<UserResponse | null> {
-    return this.secondUserRepository.getUserByPhone(phone, currentUserId);
+    const user = await this.secondUserRepository.getUserByPhone(
+      phone,
+      currentUserId
+    );
+    if (!user) {
+      return null;
+    }
+
+    return {
+      id: user.userId,
+      fullName: user.fullName,
+      email: user.email,
+      avatar: user.avatar,
+      dob: user.dob,
+      gender: user.gender,
+      bio: user.bio,
+      isContact: user.isContact,
+    };
   }
 }
