@@ -81,6 +81,12 @@ export class AuthService {
       const account = await this.accountRepository.findOne({
         where: { phone: request.phone },
         relations: ["user"],
+        select: {
+          accountId: true,
+          phone: true,
+          password: true,
+          isActive: true,
+        },
       });
 
       if (!account) {
@@ -270,6 +276,12 @@ export class AuthService {
 
       const account = await this.accountRepository.findOne({
         where: { accountId },
+        select: {
+          accountId: true,
+          phone: true,
+          password: true,
+          isActive: true,
+        },
       });
 
       if (!account) {
