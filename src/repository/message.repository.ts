@@ -13,27 +13,62 @@ export default class MessageRepository extends BaseRepository<Message> {
     }
 
     async getMessageById(messageId: number): Promise<Message | null> {
-        const message = await this.manager.findOne(Message, {
+        return await this.manager.findOne(Message, {
             where: { messageId },
-            relations: [
-                'sender',
-                'attachments',
-                'reactions',
-                'replyToMessage',
-                'replyToMessage.sender',
-                'messageStatus'
-            ]
+            relations: {
+                sender: true,
+                attachments: true,
+                reactions: {
+                    user: true
+                },
+                replyToMessage: {
+                    sender: true
+                },
+                messageStatus: true
+            }
+        });
+    }
+
+    async getUserChatMessages(userId: number, chatId: number): Promise<Message[]> {
+        // Get chat owner status once
+        const ownerStatus = await this.manager
+            .createQueryBuilder()
+            .select('cm.is_owner', 'isOwner')
+            .from('chat_members', 'cm')
+            .where('cm.chat_id = :chatId AND cm.member_id = :userId', { chatId, userId })
+            .getRawOne();
+
+        // Get messages with optimized relations
+        const messages = await this.manager.find(Message, {
+            where: { chatId },
+            relations: {
+                sender: true,
+                attachments: true,
+                reactions: {
+                    user: true
+                },
+                replyToMessage: {
+                    sender: true
+                },
+                messageStatus: true
+            },
+            order: {
+                createdAt: 'ASC'
+            }
         });
 
-        return message;
+        // Transform and add owner status
+        return messages.map(message => ({
+            ...message,
+            isOwner: ownerStatus?.isOwner || false
+        }));
     }
 
     async saveAttachments(messageId: number, attachments: string, fileType: AttachType): Promise<void> {
-
         await this.manager
             .createQueryBuilder()
             .insert()
-            .into('attachments')
+            .into(Attachment)
             .values({
                 messageId,
                 url: attachments,
@@ -44,80 +79,26 @@ export default class MessageRepository extends BaseRepository<Message> {
     }
 
     async checkMemberInChat(userId: number, chatId: number): Promise<boolean> {
-        const count = await this.manager
-            .createQueryBuilder()
-            .select('COUNT(*)', 'count')
-            .from('chat_members', 'cm')
-            .where('cm.memberId = :userId', { userId })
-            .andWhere('cm.chatId = :chatId', { chatId })
-            .getRawOne();
+        const result = await this.manager
+            .createQueryBuilder('chat_members', 'cm')
+            .where('cm.member_id = :userId AND cm.chat_id = :chatId', { userId, chatId })
+            .getExists();
 
-        const isMember = count && count.count > 0;
-        logger.info(`User ${userId} is ${isMember ? '' : 'not '}a member of chat ${chatId}`);
-        return isMember;
-    }
-
-    async getUserChatMessages(userId: number, chatId: number): Promise<Message[]> {
-        const ownerStatus = await this.manager
-            .createQueryBuilder()
-            .select('cm.is_owner', 'isOwner')
-            .from('chat_members', 'cm')
-            .where('cm.chat_id = :chatId', { chatId })
-            .andWhere('cm.member_id = :userId', { userId })
-            .getRawOne();
-
-        const queryBuilder = this.manager
-            .createQueryBuilder(Message, 'message')
-            .leftJoinAndSelect('message.sender', 'u')
-            .leftJoinAndSelect('message.attachments', 'a')
-            .leftJoinAndSelect('message.reactions', 'r')
-            .leftJoinAndSelect('r.user', 'reactor')
-            .leftJoinAndSelect('message.replyToMessage', 'rm')
-            .leftJoinAndSelect('rm.sender', 'ru')
-            .leftJoinAndSelect(
-                'message.messageStatus',
-                'ms',
-                'ms.member_id = :userId',
-                { userId }
-            )
-            .where('message.chatId = :chatId', { chatId })
-            .orderBy('message.createdAt', 'ASC');
-
-        const messages = await queryBuilder.getMany();
-        
-        const result = messages.map(message => {
-            const plainMessage = {
-                ...message,
-                isOwner: ownerStatus?.isOwner || false
-            };
-            return plainMessage;
-        });
-
+        logger.info(`User ${userId} is ${result ? '' : 'not '}a member of chat ${chatId}`);
         return result;
     }
-
 
     async sendMessage(senderId: number, chatId: number, content: string, replyTo?: number): Promise<Message> {
         const message = this.manager.create(Message, {
             senderId,
             chatId,
             content,
-            ...(replyTo ? { replyTo: replyTo } : null)
+            ...(replyTo ? { replyTo } : {})
         });
 
         const savedMessage = await this.manager.save(message);
         logger.info(`Message sent successfully by user ${senderId} in chat ${chatId}`);
         return savedMessage;
-    }
-
-
-    async saveMessageStatus(messageId: number, memberId: number, status: MessageStatusEnum): Promise<void> {
-        const messageStatus = this.manager.create(MessageStatus, {
-            messageId,
-            memberId,
-            status
-        });
-        await this.manager.save(messageStatus);
     }
 
     async editMessage(messageId: number, newContent: string): Promise<void> {
@@ -140,8 +121,7 @@ export default class MessageRepository extends BaseRepository<Message> {
             .createQueryBuilder()
             .delete()
             .from('message_reactions')
-            .where('message_id = :messageId', { messageId })
-            .andWhere('user_id = :userId', { userId })
+            .where('message_id = :messageId AND user_id = :userId', { messageId, userId })
             .execute();
         logger.info(`Reactions deleted for message ID ${messageId} by user ${userId}`);
     }
@@ -149,13 +129,15 @@ export default class MessageRepository extends BaseRepository<Message> {
     async updateReaction(messageId: number, userId: number, reactionType: Reaction): Promise<void> {
         await this.manager
             .createQueryBuilder()
-            .update('message_reactions')
-            .set({
+            .insert()
+            .into('message_reactions')
+            .values({
+                messageId,
+                userId,
                 type: reactionType,
-                createdAt: new Date().toISOString()
+                createdAt: new Date()
             })
-            .where('message_id = :messageId', { messageId })
-            .andWhere('user_id = :userId', { userId })
+            .orUpdate(['type', 'created_at'], ['message_id', 'user_id'])
             .execute();
         logger.info(`Reaction updated for message ID ${messageId} by user ${userId}`);
     }
@@ -172,6 +154,33 @@ export default class MessageRepository extends BaseRepository<Message> {
             })
             .execute();
         logger.info(`User ${userId} reacted with ${reactionType} to message ${messageId}`);
+    }
+
+
+    async markMessageUnRead(messageId: number, memberId: number[]): Promise<void> {
+        await this.manager
+            .createQueryBuilder()
+            .insert()
+            .into(MessageStatus)
+            .values(
+                memberId.map(id => ({
+                    messageId,
+                    memberId: id,
+                    status: MessageStatusEnum.UNREAD
+                }))
+            )
+            .execute();
+        logger.info(`Marked message ${messageId} as UNREAD for member ${memberId}`);
+    }
+
+    async markMessageAsRead(messageId: number, memberId: number): Promise<void> {
+        await this.manager
+            .createQueryBuilder()
+            .update(MessageStatus)
+            .set({ status: MessageStatusEnum.READ })
+            .where(`message_id = :messageId AND member_id = :memberId`, { messageId, memberId })
+            .execute();
+        logger.info(`Marked message ${messageId} as READ by member ${memberId}`);
     }
 
 }

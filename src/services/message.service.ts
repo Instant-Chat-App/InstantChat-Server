@@ -27,21 +27,21 @@ export class MessageService {
         if (!message) {
             throw new Error("Message not found");
         }
-        await this.messageRepository.saveMessageStatus(messageId, userId, MessageStatusEnum.READ);
+        await this.messageRepository.markMessageAsRead(messageId, userId);
     }
 
 
     // Retrieves messages for a specific user in a chat
     async getUserChatMessages(userId: number, chatId: number) {
         const messages = await this.messageRepository.getUserChatMessages(userId, chatId);
-
+        logger.info(`Retrieved ${messages.length} messages for user ${userId} in chat ${chatId}`);
         const unReadMessages = messages.filter(message =>
-            message.messageStatus.map(status => status.memberId === userId && status.status === MessageStatusEnum.UNREAD)
+            message.messageStatus.some(status => status.memberId === userId && status.status === MessageStatusEnum.UNREAD)
         );
         logger.info(`User ${userId} has ${unReadMessages.length} unread messages in chat ${chatId}`);
         if (unReadMessages.length > 0) {
             for (const message of unReadMessages) {
-                await this.messageRepository.saveMessageStatus(message.messageId, userId, MessageStatusEnum.READ);
+                await this.messageRepository.markMessageAsRead(message.chatId, userId);
             }
         }
         return messages;
@@ -84,21 +84,13 @@ export class MessageService {
                 );
             }
         }
-
-
-
         if (!message) {
             throw new Error("Failed to send message");
         }
+        // Mark the message as UNREAD for the user in chat
+        const otherMembers = await this.chatRepository.getChatMembers(chatId);
+        await this.messageRepository.markMessageUnRead(message.messageId, otherMembers.map(member => member.userId).filter(id => id !== senderId));
         logger.info(`Message sent successfully by user ${senderId} in chat ${chatId}`);
-
-        // Lưu messageStatus cho những người khác
-        const memberInChat = (await this.chatRepository.getChatMembers(chatId)).map(m => m.userId);
-        for (const member of memberInChat) {
-            if (member === senderId) continue;
-            await this.messageRepository.saveMessageStatus(message.messageId, member, MessageStatusEnum.UNREAD);
-        }
-
         return message;
     }
 
@@ -118,9 +110,11 @@ export class MessageService {
         if (!message.isEdited) {
             message.isEdited = true;
         }
+        logger.info(`Editing message ${content} by user ${userId}`);
         if (!content || content.trim() === "") {
             throw new Error("Content cannot be empty");
         }
+        
         if (message.content === content) {
             throw new Error("No changes made to the message content");
         }
@@ -163,9 +157,12 @@ export class MessageService {
         if (message.isDeleted) {
             throw new Error("Cannot react to a deleted message");
         }
-        logger.info("testing reaction", reaction);
+        
         let existingReaction = message?.reactions.find(r => r.userId === userId);
-        if (existingReaction && existingReaction.type !== reaction) {
+        if(existingReaction && existingReaction.type === reaction) {
+            await this.messageRepository.deleteReactions(messageId, userId);
+        } 
+        else if (existingReaction && existingReaction.type !== reaction) {
             logger.info(`User ${userId} is updating reaction for message ${messageId} from ${existingReaction.type} to ${reaction}`);
             return await this.messageRepository.updateReaction(messageId, userId, reaction);
         }
@@ -176,21 +173,21 @@ export class MessageService {
         return await this.messageRepository.reactToMessage(messageId, userId, reaction);
     }
 
-    async removeReaction(messageId: number, userId: number) {
-        const message = await this.messageRepository.getMessageById(messageId);
-        if (!message) {
-            throw new Error("Message not found");
-        }
-        if (message.isDeleted) {
-            throw new Error("Cannot remove reaction from a deleted message");
-        }
-        const existingReaction = message.reactions.find(r => r.userId === userId);
-        if (!existingReaction) {
-            throw new Error("User has not reacted to this message");
-        }
+    // async removeReaction(messageId: number, userId: number) {
+    //     const message = await this.messageRepository.getMessageById(messageId);
+    //     if (!message) {
+    //         throw new Error("Message not found");
+    //     }
+    //     if (message.isDeleted) {
+    //         throw new Error("Cannot remove reaction from a deleted message");
+    //     }
+    //     const existingReaction = message.reactions.find(r => r.userId === userId);
+    //     if (!existingReaction) {
+    //         throw new Error("User has not reacted to this message");
+    //     }
 
-        return await this.messageRepository.deleteReactions(messageId, userId);
+    //     return await this.messageRepository.deleteReactions(messageId, userId);
 
-    }
+    // }
 
 }

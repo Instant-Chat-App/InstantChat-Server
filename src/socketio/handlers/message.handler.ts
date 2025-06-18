@@ -120,7 +120,7 @@ export function handleMessageEvents(socket: Socket, io: Server) {
             socket.emit("deleteError", { error: "Failed to delete message" });
         }
     });
-    socket.on("editMessage", async (chatId: number, messageId: number, content: string) => {
+    socket.on("editMessage", async ({chatId, messageId, content}) => {
         const user = socket.data.user;
         if (!user) {
             return socket.emit("editError", { error: "UNAUTHORIZED" });
@@ -129,8 +129,7 @@ export function handleMessageEvents(socket: Socket, io: Server) {
             await messageService.editMessage(user.accountId, messageId, content);
             logger.info(`User ${user.accountId} edited message ${messageId}`);
             socket.emit("editSuccess", { messageId, content });
-            // Optionally, you can emit an event to notify other users in the chat
-            io.to(`chat_${chatId}`).emit("messageEdited", { messageId, content });
+            io.to(`chat_${chatId}`).emit("messageEdited", { messageId});
         } catch (error) {
             logger.error(`Error editing message: ${error}`);
             socket.emit("editError", { error: "Failed to edit message" });
@@ -155,23 +154,6 @@ export function handleMessageEvents(socket: Socket, io: Server) {
         }
     });
 
-    socket.on("deleteReaction", async (chatId: number, messageId: number) => {
-        const user = socket.data.user;
-        if (!user) {
-            return socket.emit("deleteReactionError", { error: "UNAUTHORIZED" });
-        }
-
-        try {
-            await messageService.removeReaction(messageId, user.accountId);
-            logger.info(`User ${user.accountId} removed reaction from message ${messageId}`);
-            socket.emit("deleteReactionSuccess", { messageId });
-            // Optionally, you can emit an event to notify other users in the chat
-            io.to(`chat_${chatId}`).emit("reactionDeleted", { messageId, userId: user.accountId });
-        } catch (error) {
-            logger.error(`Error deleting reaction: ${error}`);
-            socket.emit("deleteReactionError", { error: "Failed to delete reaction" });
-        }
-    });
 
     socket.on("memberJoined", async (chatId: number, memberId: number[]) => {
         const user = socket.data.user;

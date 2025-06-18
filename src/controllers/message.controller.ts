@@ -79,15 +79,4 @@ export default class MessageController {
         }
     }
 
-    async deleteReaction(req: Request, res: Response) {
-        const userId = req.user!.accountId;
-        const messageId = parseInt(req.params.messageId);
-
-        try {
-            await this.messageService.removeReaction(messageId, userId);
-            res.json(DataResponse.success(null, "Reaction deleted successfully"));
-        } catch (error: any) {
-            res.status(500).json(DataResponse.error("Failed to delete reaction", error.message));
-        }
-    }
 }
