@@ -3,10 +3,11 @@ import { User } from "../entities/user.entity";
 import { DataResponse } from "../dtos/responses/DataResponse";
 import { UserResponse } from "../dtos/responses/UserResponse";
 import { logger } from "../utils/logger";
+import UserRepository from "../repository/user.repository";
 
 export class UserService {
   private readonly userRepository = AppDataSource.getRepository(User);
-
+  private readonly secondUserRepository = new UserRepository();
   async getUserInfo(
     userId: number,
     currentUserId: number
@@ -99,5 +100,26 @@ export class UserService {
       logger.error(`Error getting user contacts: ${error}`);
       throw new Error(`Failed to get user contacts: ${error.message}`);
     }
+  }
+
+  async getUserById(
+    currentUserId: number,
+    targetUserId: number
+  ): Promise<UserResponse | null> {
+    const user = await this.secondUserRepository.getUserById(currentUserId, targetUserId);
+    if (!user) {
+      return null;
+    }
+
+    return {
+      userId: user.userId,
+      fullName: user.fullName,
+      email: user.email,
+      avatar: user.avatar,
+      dob: user.dob,
+      gender: user.gender,
+      bio: user.bio,
+      isContact: user.isContact,
+    };
   }
 }

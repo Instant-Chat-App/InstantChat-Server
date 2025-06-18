@@ -80,4 +80,45 @@ export default class UserController {
         .json(DataResponse.error("Internal server error", error.message));
     }
   }
+
+  async getUserById(req: Request, res: Response) {
+    try {
+      const targetUserId = parseInt(req.params.userId, 10);
+
+      if (isNaN(targetUserId)) {
+        return res.status(400).json(DataResponse.badRequest("Invalid user ID"));
+      }
+
+      const currentUser = req.user;
+      if (!currentUser) {
+        return res
+          .status(401)
+          .json(DataResponse.unauthorized("User authentication required"));
+      }
+
+      const result = await this.userService.getUserById(
+        currentUser.accountId,
+        targetUserId
+      );
+
+      if (result instanceof DataResponse) {
+        return res.status(result.code).json(result);
+      }
+
+      return res
+        .status(200)
+        .json(
+          DataResponse.success(
+            result,
+            "User information retrieved successfully"
+          )
+        );
+    } catch (error: any) {
+      logger.error(`Get user info error: ${error}`);
+      return res
+        .status(500)
+        .json(DataResponse.error("Internal server error", error.message));
+    }
+  }
+
 }
