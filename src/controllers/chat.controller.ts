@@ -104,6 +104,12 @@ export default class ChatController {
             }
 
             const members = rawMembers.map((id: string | number) => parseInt(id.toString()));
+
+            if (members.length < 1) {
+                return res.status(400).json(DataResponse.error("Invalid members", "at least two members are required to create a group chat"));
+            }
+
+
             if (members.some((id: number) => isNaN(id))) {
                 return res.status(400).json(DataResponse.error("Invalid members", "all member IDs must be valid numbers"));
             }
@@ -114,7 +120,7 @@ export default class ChatController {
             const groupRequest: CreateGroupRequest = {
                 name: req.body.name,
                 members: members,
-                description: req.body.description || "",
+                description: req.body.description,
                 coverImage: cloudinaryFile.path
             };
 
@@ -139,7 +145,9 @@ export default class ChatController {
             }
 
             const members = rawMembers.map((id: string | number) => parseInt(id.toString()));
-
+            if (members.length < 1) {
+                return res.status(400).json(DataResponse.error("Invalid members", "at least two members are required to create a group chat"));
+            }
             const cloudinaryFile = req.file as Express.Multer.File & {
                 path: string;
             };
@@ -150,7 +158,8 @@ export default class ChatController {
             const channelRequest: CreateGroupRequest = {
                 name: req.body.name,
                 members: members,
-                coverImage: cloudinaryFile.path
+                coverImage: cloudinaryFile.path,
+                description: req.body.description || "",
             };
 
             const chat = await this.chatService.createChannel(userId, channelRequest);

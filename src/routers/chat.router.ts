@@ -29,12 +29,16 @@ chatRouter.post("/", authMiddleware, (req, res) => {
     chatController.createPrivateChat(req, res);
 });
 
-chatRouter.post("/group", authMiddleware,uploadChatCover, (req, res) => {
-    chatController.createGroupChat(req, res);
-});
 
-chatRouter.post("/channel", authMiddleware, uploadChatCover, (req, res) => {
-    chatController.createChannel(req, res);
+chatRouter.post("/create", authMiddleware, uploadChatCover, (req, res) => {
+    const type = (req.query.type as string)?.toUpperCase();
+    if (type === "GROUP") {
+        chatController.createGroupChat(req, res);
+    } else if (type === "CHANNEL") {
+        chatController.createChannel(req, res);
+    } else {
+        return res.status(400).json(DataResponse.badRequest("Invalid chat type"));
+    }
 });
 
 // Add user to chat
@@ -77,7 +81,7 @@ chatRouter.patch("/:chatId/cover", (req, res, next) => {
     });
 
 // Get chat members
-chatRouter.get("/:chatId/members", authMiddleware,(req, res) => {
+chatRouter.get("/:chatId/members", authMiddleware, (req, res) => {
     chatController.getChatMembers(req, res);
 });
 

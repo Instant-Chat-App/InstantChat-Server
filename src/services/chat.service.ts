@@ -73,10 +73,11 @@ export class ChatService {
             const chat = await this.chatRepository.createChat({
                 type: ChatType.GROUP,
                 chatName: request.name,
-                coverImage: request.coverImage || "https://res.cloudinary.com/dfu9thgp9/image/upload/v1750083099/uploads/izwe0tgmdwvhpw5olmuv.png"
+                coverImage: request.coverImage || "https://res.cloudinary.com/dfu9thgp9/image/upload/v1750083099/uploads/izwe0tgmdwvhpw5olmuv.png",
+                description: request.description || ""
             });
             logger.info(`Created new group chat with ID ${chat.chatId} and name ${request.name}`);
-            if(request.members.length < 2) {
+            if(request.members.length < 1) {
                 logger.warn(`Not enough members to create group chat: ${request.members.length}`);
                 throw new Error('Not enough members to create group chat');
             }
@@ -99,7 +100,8 @@ export class ChatService {
             const chat = await this.chatRepository.createChat({
                 type: ChatType.CHANNEL,
                 chatName: request.name,
-                coverImage: request.coverImage || "https://res.cloudinary.com/dfu9thgp9/image/upload/v1750083099/uploads/izwe0tgmdwvhpw5olmuv.png"
+                coverImage: request.coverImage || "https://res.cloudinary.com/dfu9thgp9/image/upload/v1750083099/uploads/izwe0tgmdwvhpw5olmuv.png",
+                description: request.description || ""
             });
             logger.info(`Created new channel with ID ${chat.chatId} and name ${request.name}`);
 
