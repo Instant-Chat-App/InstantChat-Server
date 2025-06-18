@@ -16,7 +16,7 @@ async function initializeApplication() {
   app.use(corsConfig);
   const server = createServer(app);
 
-  app.use(express.json());
+  app.use(express.json({limit: "50mb"}));
   setupSocket(server);
 
   const port = getEnv("PORT", "8080");

@@ -81,10 +81,11 @@ export class ChatService {
                 logger.warn(`Not enough members to create group chat: ${request.members.length}`);
                 throw new Error('Not enough members to create group chat');
             }
+            const membersArray = Array.isArray(request.members) ? request.members : [];
             // Add owner and members
             const members = [
                 { memberId: userId, isOwner: true },
-                ...request.members.map(memberId => ({
+                ...membersArray.map(memberId => ({
                     memberId,
                     isOwner: false
                 }))
@@ -106,9 +107,10 @@ export class ChatService {
             logger.info(`Created new channel with ID ${chat.chatId} and name ${request.name}`);
 
             // Add owner and members
+            const membersArray = Array.isArray(request.members) ? request.members : [];
             const members = [
                 { memberId: userId, isOwner: true },
-                ...request.members.map(memberId => ({
+                ...membersArray.map(memberId => ({
                     memberId,
                     isOwner: false
                 }))

@@ -30,7 +30,7 @@ chatRouter.post("/", authMiddleware, (req, res) => {
 });
 
 
-chatRouter.post("/create", authMiddleware, uploadChatCover, (req, res) => {
+chatRouter.post("/create", authMiddleware, (req, res) => {
     const type = (req.query.type as string)?.toUpperCase();
     if (type === "GROUP") {
         chatController.createGroupChat(req, res);
