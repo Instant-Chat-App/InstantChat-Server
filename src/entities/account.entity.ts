@@ -15,7 +15,7 @@ export class Account {
   @Column({ type: 'varchar', unique: true, nullable: true })
   phone?: string;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', nullable: false, select: false })
   password?: string;
 
   @Column({ name: 'is_active', type: 'boolean', default: true })

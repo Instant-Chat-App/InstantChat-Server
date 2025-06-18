@@ -88,22 +88,6 @@ export function handleMessageEvents(socket: Socket, io: Server) {
         }
     });
 
-    // socket.on("readMessages", async (chatId: number, params: PaginationParams) => {
-    //     const user = socket.data.user;
-    //     if (!user) {
-    //         return socket.emit("readError", { error: "UNAUTHORIZED" });
-    //     }
-
-    //     try {
-    //         await messageService.getUserChatMessages(user.accountId, chatId, params);
-    //         logger.info(`User ${user.accountId} marked messages as read in chat ${chatId}`);
-    //         socket.emit("readSuccess", { chatId });
-    //     } catch (error) {
-    //         logger.error(`Error marking messages as read: ${error}`);
-    //         socket.emit("readError", { error: "Failed to mark messages as read" });
-    //     }
-    // });
-
     socket.on("deleteMessage", async (chatId: number, messageId: number) => {
         const user = socket.data.user;
         if (!user) {

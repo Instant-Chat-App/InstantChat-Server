@@ -23,19 +23,18 @@ chatRouter.get("/:chatId/me", authMiddleware, (req, res) => {
     chatController.getCurrentMember(req, res);
 });
 
-// Create new chat (private, group, or channel)
-chatRouter.post("/", authMiddleware, (req, res) => {
-    const chatType = (req.query.chatType as string)?.toUpperCase();
 
-    if (chatType === "PRIVATE") {
-        chatController.createPrivateChat(req, res);
-    } else if (chatType === "GROUP") {
-        chatController.createGroupChat(req, res);
-    } else if (chatType === "CHANNEL") {
-        chatController.createChannel(req, res);
-    } else {
-        res.status(400).json(DataResponse.error("Invalid chat type", "Chat type must be PRIVATE, GROUP, or CHANNEL"));
-    }
+
+chatRouter.post("/", authMiddleware, (req, res) => {
+    chatController.createPrivateChat(req, res);
+});
+
+chatRouter.post("/group", authMiddleware,uploadChatCover, (req, res) => {
+    chatController.createGroupChat(req, res);
+});
+
+chatRouter.post("/channel", authMiddleware, uploadChatCover, (req, res) => {
+    chatController.createChannel(req, res);
 });
 
 // Add user to chat

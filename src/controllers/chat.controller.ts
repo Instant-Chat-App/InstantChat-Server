@@ -97,18 +97,25 @@ export default class ChatController {
                 return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
             }
 
-            if (!Array.isArray(req.body.members)) {
-                return res.status(400).json(DataResponse.error("Invalid members", "members must be an array of user IDs"));
+            const rawMembers = JSON.parse(req.body.members);
+
+            if (!Array.isArray(rawMembers)) {
+                return res.status(400).json(DataResponse.error("Invalid members", "members must be an array"));
             }
 
-            const members = req.body.members.map((id: string | number) => parseInt(id.toString()));
+            const members = rawMembers.map((id: string | number) => parseInt(id.toString()));
             if (members.some((id: number) => isNaN(id))) {
                 return res.status(400).json(DataResponse.error("Invalid members", "all member IDs must be valid numbers"));
             }
+            const cloudinaryFile = req.file as Express.Multer.File & {
+                path: string;
+            };
 
             const groupRequest: CreateGroupRequest = {
                 name: req.body.name,
-                members: members
+                members: members,
+                description: req.body.description || "",
+                coverImage: cloudinaryFile.path
             };
 
             const chat = await this.chatService.createGroupChat(userId, groupRequest);
@@ -125,18 +132,25 @@ export default class ChatController {
                 return res.status(400).json(DataResponse.error("Invalid userId", "userId must be a valid number"));
             }
 
-            if (!Array.isArray(req.body.members)) {
-                return res.status(400).json(DataResponse.error("Invalid members", "members must be an array of user IDs"));
+            const rawMembers = JSON.parse(req.body.members);
+
+            if (!Array.isArray(rawMembers)) {
+                return res.status(400).json(DataResponse.error("Invalid members", "members must be an array"));
             }
 
-            const members = req.body.members.map((id: string | number) => parseInt(id.toString()));
+            const members = rawMembers.map((id: string | number) => parseInt(id.toString()));
+
+            const cloudinaryFile = req.file as Express.Multer.File & {
+                path: string;
+            };
             if (members.some((id: number) => isNaN(id))) {
                 return res.status(400).json(DataResponse.error("Invalid members", "all member IDs must be valid numbers"));
             }
 
             const channelRequest: CreateGroupRequest = {
                 name: req.body.name,
-                members: members
+                members: members,
+                coverImage: cloudinaryFile.path
             };
 
             const chat = await this.chatService.createChannel(userId, channelRequest);
@@ -150,7 +164,7 @@ export default class ChatController {
         try {
             const ownerId = req.user!.accountId;
             const chatId = this.validateId(req.params.chatId, 'chatId');
-            const members : number[] = req.body.members;
+            const members: number[] = req.body.members;
 
             if (ownerId === null) {
                 return res.status(400).json(DataResponse.error("Invalid ownerId", "ownerId must be a valid number"));
@@ -258,7 +272,7 @@ export default class ChatController {
             const chatId = this.validateId(req.params.chatId, 'chatId');
             const coverImage = req.file?.path;
             logger.info(coverImage);
-            if(!coverImage){
+            if (!coverImage) {
                 return res.status(400).json(DataResponse.error("Invalid coverImage", "coverImage must be a valid file"));
             }
             if (userId === null) {

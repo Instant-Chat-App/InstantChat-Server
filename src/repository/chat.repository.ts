@@ -329,4 +329,6 @@ export default class ChatRepository extends BaseRepository<Chat> {
             .orWhere('user.full_name LIKE :searchTerm', { searchTerm: `%${searchTerm}%` })
             .getMany();
     }
+
+    
 }

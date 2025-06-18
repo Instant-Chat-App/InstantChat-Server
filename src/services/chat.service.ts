@@ -72,7 +72,8 @@ export class ChatService {
             // Create new chat
             const chat = await this.chatRepository.createChat({
                 type: ChatType.GROUP,
-                chatName: request.name
+                chatName: request.name,
+                coverImage: request.coverImage || "https://res.cloudinary.com/dfu9thgp9/image/upload/v1750083099/uploads/izwe0tgmdwvhpw5olmuv.png"
             });
             logger.info(`Created new group chat with ID ${chat.chatId} and name ${request.name}`);
             if(request.members.length < 2) {
@@ -97,7 +98,8 @@ export class ChatService {
             // Create new chat
             const chat = await this.chatRepository.createChat({
                 type: ChatType.CHANNEL,
-                chatName: request.name
+                chatName: request.name,
+                coverImage: request.coverImage || "https://res.cloudinary.com/dfu9thgp9/image/upload/v1750083099/uploads/izwe0tgmdwvhpw5olmuv.png"
             });
             logger.info(`Created new channel with ID ${chat.chatId} and name ${request.name}`);
 
