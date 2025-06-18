@@ -25,6 +25,7 @@ export class AuthService {
 
   private readonly ACCESS_TOKEN_SECRET = getEnv("ACCESS_TOKEN_SECRET");
   private readonly REFRESH_TOKEN_SECRET = getEnv("REFRESH_TOKEN_SECRET");
+  private readonly DEFAULT_AVT = getEnv("DEFAULT_AVT_URL");
 
   private getExpiryInSecond(expiresIn: string): number {
     const multiplier = expiresIn.endsWith("d")
@@ -136,6 +137,7 @@ export class AuthService {
       user.userId = savedAccount.accountId;
       user.fullName = request.fullName;
       user.email = request.email;
+      user.avatar = this.DEFAULT_AVT;
 
       await this.userRepository.save(user);
 
