@@ -60,7 +60,7 @@ export function handleMessageEvents(socket: Socket, io: Server) {
                 return socket.emit("messageError", { error: "Message content cannot be empty" });
             }
 
-            await messageService.sendMessage(
+            const newMessage = await messageService.sendMessage(
                 user.accountId,
                 message.chatId,
                 message.content,
@@ -69,13 +69,14 @@ export function handleMessageEvents(socket: Socket, io: Server) {
             );
 
             // Emit the message to all members of the chat
-            io.to(`chat_${message.chatId}`).emit("newMessage", {
-                chatId: message.chatId,
-                content: message.content,
-                attachments: message.attachments,
+            io.to(`chat_${newMessage.chatId}`).emit("newMessage", {
+                chatId: newMessage.chatId,
+                messageId: newMessage.messageId,
+                content: newMessage.content,
+                attachments: newMessage.attachments,
                 senderId: user.accountId,
                 timestamp: new Date().toISOString(),
-                replyTo: message.replyTo,
+                replyTo: newMessage.replyTo,
                 isEdited: false,
                 isDeleted: false,
 
