@@ -122,4 +122,11 @@ export class UserService {
       isContact: user.isContact,
     };
   }
+
+  async getUserByPhone(
+    phone: string,
+    currentUserId: number
+  ): Promise<UserResponse | null> {
+    return this.secondUserRepository.getUserByPhone(phone, currentUserId);
+  }
 }

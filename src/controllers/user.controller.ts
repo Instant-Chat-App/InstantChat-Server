@@ -123,4 +123,42 @@ export default class UserController {
     }
   }
 
+  async getUserByPhone(req: Request, res: Response) {
+    try {
+      const phone = req.params.phone;
+      if (!phone) {
+        return res.status(400).json({ message: "Phone number is required" });
+      }
+
+      const currentUser = req.user;
+      if (!currentUser) {
+        return res
+          .status(401)
+          .json(DataResponse.unauthorized("User authentication required"));
+      }
+
+      const result = await this.userService.getUserByPhone(
+        phone,
+        currentUser.accountId
+      );
+      if (result instanceof DataResponse) {
+        return res.status(result.code).json(result);
+      }
+
+      return res
+        .status(200)
+        .json(
+          DataResponse.success(
+            result,
+            "User information retrieved successfully"
+          )
+        );
+    } catch (error: any) {
+      logger.error(`Get user by phone error: ${error}`);
+      return res
+        .status(500)
+        .json(DataResponse.error("Internal server error", error.message));
+    }
+  }
+
 }

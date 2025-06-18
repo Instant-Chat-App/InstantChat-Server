@@ -17,4 +17,8 @@ userRouter.get("/find/:userId", authMiddleware, (req, res) => {
   userController.getUserById(req, res);
 });
 
+userRouter.get("/phone/:phone", authMiddleware, (req, res) => {
+  userController.getUserByPhone(req, res);
+});
+
 export default userRouter;
