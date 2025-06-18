@@ -13,7 +13,7 @@ export class UserService {
     currentUserId: number
   ): Promise<UserResponse | DataResponse<null>> {
     try {
-      // Không cho phép lấy thông tin của chính mình (nên dùng API profile)
+      // Không cho phép lấy thông tin của chính mình
       if (userId === currentUserId) {
         return DataResponse.badRequest("Can't get your own profile");
       }
@@ -146,5 +146,103 @@ export class UserService {
       bio: user.bio,
       isContact: user.isContact,
     };
+  }
+
+  async addContact(
+    currentUserId: number,
+    contactUserId: number
+  ): Promise<UserResponse | DataResponse<null>> {
+    try {
+      if (currentUserId === contactUserId) {
+        return DataResponse.badRequest("You cannot add yourself as a contact");
+      }
+
+      const currentUser = await this.userRepository.findOne({
+        where: { userId: currentUserId },
+        relations: ["contacts"],
+      });
+
+      if (!currentUser) {
+        return DataResponse.notFound("Current user not found");
+      }
+
+      const contactUser = await this.userRepository.findOne({
+        where: { userId: contactUserId },
+      });
+
+      if (!contactUser) {
+        return DataResponse.notFound("Contact user not found");
+      }
+
+      if (
+        currentUser.contacts?.some(
+          (contact) => contact.userId === contactUserId
+        )
+      ) {
+        return DataResponse.badRequest("This user is already in your contacts");
+      }
+
+      if (!currentUser.contacts) {
+        currentUser.contacts = [];
+      }
+      currentUser.contacts.push(contactUser);
+
+      await this.userRepository.save(currentUser);
+
+      return {
+        id: contactUser.userId,
+        fullName: contactUser.fullName,
+        email: contactUser.email,
+        avatar: contactUser.avatar,
+        dob: contactUser.dob,
+        gender: contactUser.gender,
+        bio: contactUser.bio,
+        isContact: true,
+      };
+    } catch (error: any) {
+      logger.error(`Error adding contact: ${error}`);
+      throw new Error(`Failed to add contact: ${error.message}`);
+    }
+  }
+
+  async removeContact(
+    currentUserId: number,
+    contactUserId: number
+  ): Promise<boolean | DataResponse<null>> {
+    try {
+      if (currentUserId === contactUserId) {
+        return DataResponse.badRequest(
+          "You cannot remove yourself from contacts"
+        );
+      }
+
+      const currentUser = await this.userRepository.findOne({
+        where: { userId: currentUserId },
+        relations: ["contacts"],
+      });
+
+      if (!currentUser) {
+        return DataResponse.notFound("Current user not found");
+      }
+
+      if (
+        !currentUser.contacts?.some(
+          (contact) => contact.userId === contactUserId
+        )
+      ) {
+        return DataResponse.badRequest("This user is not in your contacts");
+      }
+
+      currentUser.contacts = currentUser.contacts.filter(
+        (contact) => contact.userId !== contactUserId
+      );
+
+      await this.userRepository.save(currentUser);
+
+      return true;
+    } catch (error: any) {
+      logger.error(`Error removing contact: ${error}`);
+      throw new Error(`Failed to remove contact: ${error.message}`);
+    }
   }
 }
