@@ -14,7 +14,7 @@ import { DataResponse } from "../dtos/responses/DataResponse";
 import { UpdateProfileRequest } from "../dtos/requests/LoginProfileRequest";
 import { ChangePasswordRequest } from "../dtos/requests/ChangePasswordRequest";
 import cloudinary from "../config/cloudinary/cloudinary";
-import { ProfileResponse } from "../dtos/responses/UserProfileResponse";
+import { ProfileResponse } from "../dtos/responses/ProfileResponse";
 import { smsService } from "./sms.service";
 import { ForgotPasswordRequest } from "../dtos/requests/ForgotPasswordRequest";
 import { ResetPasswordRequest } from "../dtos/requests/ResetPasswordRequest";
