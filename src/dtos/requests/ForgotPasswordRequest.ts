@@ -1,3 +1,3 @@
 export interface ForgotPasswordRequest {
-  phone: string;
+  email: string;
 }
