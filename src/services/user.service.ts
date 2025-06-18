@@ -15,7 +15,7 @@ export class UserService {
       // Không cho phép lấy thông tin của chính mình (nên dùng API profile)
       if (userId === currentUserId) {
         return DataResponse.badRequest(
-          "Please use profile API to get your own information"
+          "Can't get your own profile"
         );
       }
 
