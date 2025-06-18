@@ -5,6 +5,7 @@ import { Message } from "../entities/message.entity";
 import { logger } from "../utils/logger";
 import { BaseRepository } from "./base.repository";
 import { Attachment } from "../entities/attachment.entity";
+import {PaginationParams, PaginationResponse } from "../utils/type";
 
 
 export default class MessageRepository extends BaseRepository<Message> {
@@ -29,7 +30,11 @@ export default class MessageRepository extends BaseRepository<Message> {
         });
     }
 
-    async getUserChatMessages(userId: number, chatId: number): Promise<Message[]> {
+    async getUserChatMessages(
+        userId: number,
+         chatId: number,
+        {limit, cursor, direction}: PaginationParams
+        ): Promise<PaginationResponse<Message>> {
         // Get chat owner status once
         const ownerStatus = await this.manager
             .createQueryBuilder()
@@ -39,29 +44,45 @@ export default class MessageRepository extends BaseRepository<Message> {
             .getRawOne();
 
         // Get messages with optimized relations
-        const messages = await this.manager.find(Message, {
-            where: { chatId },
-            relations: {
-                sender: true,
-                attachments: true,
-                reactions: {
-                    user: true
-                },
-                replyToMessage: {
-                    sender: true
-                },
-                messageStatus: true
-            },
-            order: {
-                createdAt: 'ASC'
+        const queryBuilder = await this.manager.createQueryBuilder(Message, 'm')
+            .where('m.chatId = :chatId', { chatId })
+            .leftJoinAndSelect('m.sender', 'sender')
+            .leftJoinAndSelect('m.attachments', 'attachments')
+            .leftJoinAndSelect('m.reactions', 'reactions')
+            .leftJoinAndSelect('reactions.user', 'user')
+            .leftJoinAndSelect('m.replyToMessage', 'replyToMessage')
+            .leftJoinAndSelect('replyToMessage.sender', 'replyToMessageSender')
+            .leftJoinAndSelect('m.messageStatus', 'messageStatus')
+            .take(limit+1);
+
+        if(cursor){
+            if(direction === 'before'){
+                queryBuilder.andWhere('m.createdAt < :cursor', { cursor: new Date(cursor) });
+                queryBuilder.orderBy('m.createdAt', 'DESC');
             }
-        });
+            else{
+                queryBuilder.andWhere('m.createdAt > :cursor', { cursor: new Date(cursor) });
+                queryBuilder.orderBy('m.createdAt', 'ASC');
+            }
+        }
+        else{
+            queryBuilder.orderBy('m.createdAt', 'DESC');
+        }
+
+        const messages = await queryBuilder.getMany();
+        const hasMore = messages.length > limit;
+        const actualMessages = messages.slice(0, limit);
 
         // Transform and add owner status
-        return messages.map(message => ({
-            ...message,
-            isOwner: ownerStatus?.isOwner || false
-        }));
+
+        return {
+            data: actualMessages.map(message => ({
+                ...message,
+                isOwner: ownerStatus?.isOwner || false
+            })),
+            hasMore,
+            nextCursor: hasMore ? messages[limit].createdAt : undefined
+        }
     }
 
     async saveAttachments(messageId: number, attachments: string, fileType: AttachType): Promise<void> {

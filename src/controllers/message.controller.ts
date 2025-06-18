@@ -1,7 +1,8 @@
 import { DataResponse } from "../dtos/responses/DataResponse";
 import { MessageService } from "../services/message.service";
 import { Request, Response } from "express";
-
+import { PaginationParams } from "../utils/type";
+import { Message } from "../entities/message.entity";
 export default class MessageController {
     private messageService: MessageService;
 
@@ -12,9 +13,14 @@ export default class MessageController {
     async getUserChatMessages(req: Request, res: Response) {
         const chatId = parseInt(req.params.chatId);
         const userId = req.user!.accountId;
+        const params: PaginationParams = {
+            limit: parseInt(req.query.limit as string) || 10,
+            cursor: req.query.cursor ? new Date(req.query.cursor as string) : undefined,
+            direction: req.query.direction === 'before' ? 'before' : 'after'
+        };
         try {
-            const messages = await this.messageService.getUserChatMessages(userId, chatId);
-            res.json(DataResponse.success(messages, "Messages retrieved successfully"));
+            const data = await this.messageService.getUserChatMessages(userId, chatId, params);
+            res.json(DataResponse.success(data, "Messages retrieved successfully"));
         } catch (error: any) {
             res.status(500).json(DataResponse.error("Failed to retrieve messages", error.message));
         }

@@ -8,6 +8,7 @@ import { logger } from "../utils/logger";
 import { uploadFromBase64 } from "./upload.service";
 import { base64Data } from "../socketio/handlers/message.handler";
 import { Attachment } from "../entities/attachment.entity";
+import { PaginationParams, PaginationResponse } from "../utils/type";
 
 export class MessageService {
     private messageRepository: MessageRepository;
@@ -32,19 +33,28 @@ export class MessageService {
 
 
     // Retrieves messages for a specific user in a chat
-    async getUserChatMessages(userId: number, chatId: number) {
-        const messages = await this.messageRepository.getUserChatMessages(userId, chatId);
+    async getUserChatMessages(
+        userId: number,
+        chatId: number,
+        params: PaginationParams
+    ): Promise<PaginationResponse<Message>> {
+        const {data: messages, hasMore, nextCursor} = await this.messageRepository.getUserChatMessages(userId, chatId, params);
         logger.info(`Retrieved ${messages.length} messages for user ${userId} in chat ${chatId}`);
-        const unReadMessages = messages.filter(message =>
+        const unReadMessages = messages.filter((message: Message) =>
             message.messageStatus.some(status => status.memberId === userId && status.status === MessageStatusEnum.UNREAD)
         );
         logger.info(`User ${userId} has ${unReadMessages.length} unread messages in chat ${chatId}`);
         if (unReadMessages.length > 0) {
             for (const message of unReadMessages) {
-                await this.messageRepository.markMessageAsRead(message.chatId, userId);
+                await this.messageRepository.markMessageAsRead(message.messageId, userId);
             }
         }
-        return messages;
+
+        return {
+            data: messages,
+            hasMore,
+            nextCursor
+        };
     }
 
     async sendMessage(
