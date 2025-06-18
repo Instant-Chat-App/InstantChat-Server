@@ -233,20 +233,21 @@ export default class AuthController {
       const forgotPasswordRequest: ForgotPasswordRequest = req.body;
 
       const result = await this.authService.forgotPassword(
-        forgotPasswordRequest.email
+        forgotPasswordRequest
       );
 
-      return res.status(result.code).json(result);
+      if (result instanceof DataResponse) {
+        return res.status(result.code).json(result);
+      }
+
+      res
+        .status(200)
+        .json(DataResponse.success(null, "OTP sent to your phone"));
     } catch (error: any) {
       logger.error(`Forgot password error: ${error}`);
-      return res
+      res
         .status(500)
-        .json(
-          DataResponse.error(
-            "Internal server error",
-            error.message || "Unknown error"
-          )
-        );
+        .json(DataResponse.error("Internal server error", error.message));
     }
   }
 
@@ -260,14 +261,14 @@ export default class AuthController {
         return res.status(result.code).json(result);
       }
 
-      return res
+      res
         .status(200)
         .json(
           DataResponse.success(null, "Password has been reset successfully")
         );
     } catch (error: any) {
       logger.error(`Reset password error: ${error}`);
-      return res
+      res
         .status(500)
         .json(DataResponse.error("Internal server error", error.message));
     }

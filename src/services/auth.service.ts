@@ -15,9 +15,8 @@ import { UpdateProfileRequest } from "../dtos/requests/LoginProfileRequest";
 import { ChangePasswordRequest } from "../dtos/requests/ChangePasswordRequest";
 import cloudinary from "../config/cloudinary/cloudinary";
 import { ProfileResponse } from "../dtos/responses/UserProfileResponse";
-import { v4 as uuidv4 } from "uuid";
-import { emailService } from "./email.service";
-import { HttpStatusCode } from "../utils/http-status-code";
+import { smsService } from "./sms.service";
+import { ForgotPasswordRequest } from "../dtos/requests/ForgotPasswordRequest";
 import { ResetPasswordRequest } from "../dtos/requests/ResetPasswordRequest";
 
 export class AuthService {
@@ -343,97 +342,68 @@ export class AuthService {
     }
   }
 
-  async forgotPassword(email: string): Promise<DataResponse<null>> {
+  async forgotPassword(
+    req: ForgotPasswordRequest
+  ): Promise<boolean | DataResponse<null>> {
+    const phone = req.phone;
     try {
-      // Check if user with this email exists
-      const user = await this.userRepository.findOne({
-        where: { email },
-        relations: ["account"],
+      const account = await this.accountRepository.findOne({
+        where: { phone },
       });
 
-      if (!user || !user.account) {
-        // Don't reveal that email doesn't exist for security reasons
-        logger.info(
-          `Password reset requested for non-existent email: ${email}`
-        );
-        return DataResponse.success(null, "Password reset request processed");
+      if (!account) {
+        return DataResponse.notFound("No account found with this phone number");
       }
 
-      // Generate a random reset token
-      const resetToken = uuidv4();
+      const otp = this.generateOTP();
 
-      // Store the token in Redis with a 1-hour expiry (3600 seconds)
-      await redisService.storePasswordResetToken(email, resetToken, 3600);
+      // Store OTP in Redis (valid for 5 minutes)
+      await redisService.storeOTP(phone, otp, 300);
 
-      // Send the password reset email
-      const emailSent = await emailService.sendPasswordResetLink(
-        email,
-        resetToken
-      );
+      // Send OTP via SMS
+      await smsService.sendOTP(phone, otp);
 
-      if (!emailSent) {
-        logger.error(`Failed to send password reset email to ${email}`);
-        return DataResponse.error(
-          "Failed to send password reset email",
-          "Email service error"
-        );
-      }
-
-      logger.info(`Password reset email sent to ${email}`);
-      return DataResponse.success(null, "Password reset request processed");
-    } catch (error: any) {
-      logger.error(`Error in forgotPassword: ${error}`);
-      return DataResponse.error(
-        "Password reset request failed",
-        error.message || "Unknown error"
-      );
+      return true;
+    } catch (error) {
+      logger.error(`Error in forgot password: ${error}`);
+      throw new Error("Failed to process password reset request");
     }
   }
 
   async resetPassword(
-    request: ResetPasswordRequest
+    req: ResetPasswordRequest
   ): Promise<boolean | DataResponse<null>> {
+    const { phone, otp, newPassword, confirmPassword } = req;
     try {
-      const { token, newPassword, confirmPassword } = request;
+      const isValidOTP = await redisService.verifyOTP(phone, otp);
 
-      // Verify passwords match
+      if (!isValidOTP) {
+        return DataResponse.badRequest("Invalid or expired OTP");
+      }
+
+      const account = await this.accountRepository.findOne({
+        where: { phone },
+      });
+
+      if (!account) {
+        return DataResponse.notFound("Account not found");
+      }
+
       if (newPassword !== confirmPassword) {
         return DataResponse.badRequest("Passwords do not match");
       }
 
-      // Verify the reset token is valid
-      const email = await redisService.verifyPasswordResetToken(token);
-
-      if (!email) {
-        return DataResponse.badRequest(
-          "Invalid or expired password reset token"
-        );
-      }
-
-      // Find the user by email
-      const user = await this.userRepository.findOne({
-        where: { email },
-        relations: ["account"],
-      });
-
-      if (!user || !user.account) {
-        return DataResponse.notFound("User not found");
-      }
-
-      // Hash the new password
       const passwordHash = await bcrypt.hash(newPassword, 10);
 
-      // Update the account's password
-      user.account.password = passwordHash;
-      await this.accountRepository.save(user.account);
+      account.password = passwordHash;
+      await this.accountRepository.save(account);
 
-      // Delete the reset token from Redis
-      await redisService.deletePasswordResetToken(token);
+      await redisService.deleteOTP(phone);
 
       return true;
     } catch (error) {
-      logger.error(`Error in resetPassword: ${error}`);
-      throw new Error("Password reset failed");
+      logger.error(`Error in reset password: ${error}`);
+      throw new Error("Failed to reset password");
     }
   }
 

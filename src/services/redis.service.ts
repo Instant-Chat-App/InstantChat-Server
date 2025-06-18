@@ -73,41 +73,36 @@ class RedisService {
     return result === 1;
   }
 
-  async storePasswordResetToken(
-    email: string,
-    token: string,
-    expiryInSeconds: number = 900 // 15 mins
+  async storeOTP(
+    phone: string,
+    otp: string,
+    expiryInSeconds: number = 300
   ): Promise<void> {
     try {
-      await this.client.set(
-        `password_reset:${token}`,
-        email,
-        "EX",
-        expiryInSeconds
-      );
+      await this.client.set(`otp:${phone}`, otp, "EX", expiryInSeconds);
     } catch (error) {
-      logger.error(`Error storing password reset token: ${error}`);
-      throw new Error("Failed to store password reset token");
+      logger.error(`Error storing OTP: ${error}`);
+      throw new Error("Failed to store OTP");
     }
   }
 
-  async verifyPasswordResetToken(token: string): Promise<string | null> {
+  async verifyOTP(phone: string, otp: string): Promise<boolean> {
     try {
-      const email = await this.client.get(`password_reset:${token}`);
-      return email;
+      const storedOTP = await this.client.get(`otp:${phone}`);
+      return storedOTP === otp;
     } catch (error) {
-      logger.error(`Error verifying password reset token: ${error}`);
-      throw new Error("Failed to verify password reset token");
+      logger.error(`Error verifying OTP: ${error}`);
+      throw new Error("Failed to verify OTP");
     }
   }
 
-  async deletePasswordResetToken(token: string): Promise<boolean> {
+  async deleteOTP(phone: string): Promise<boolean> {
     try {
-      const result = await this.client.del(`password_reset:${token}`);
+      const result = await this.client.del(`otp:${phone}`);
       return result === 1;
     } catch (error) {
-      logger.error(`Error deleting password reset token: ${error}`);
-      throw new Error("Failed to delete password reset token");
+      logger.error(`Error deleting OTP: ${error}`);
+      throw new Error("Failed to delete OTP");
     }
   }
 
