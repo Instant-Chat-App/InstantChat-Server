@@ -22,9 +22,6 @@ Thumbs.db
 Dockerfile
 .dockerignore
 
-# Env and secrets
-.env
-.env.*          # If using multiple environments like .env.development, .env.production
 
 # Test and build artifacts
 coverage
